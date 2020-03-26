@@ -19,13 +19,13 @@ source `dirname $0`/common.env
 cd ${REPO_ROOT_PATH}
 
 sudo ${DNF} -y install epel-release
-sudo ${DNF} -y install tar wget make gcc gcc-c++ libtool automake autoconf git pkgconfig libunwind libunwind-devel rpm-build 
+sudo ${DNF} -y install tar make gcc gcc-c++ libtool automake autoconf git pkgconfig libunwind libunwind-devel rpm-build 
 
 mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 
 if [ "x${DNF}" = "xdnf" ];then
 sudo ${DNF} config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-wget https://download.docker.com/linux/centos/7/x86_64/stable/Packages/containerd.io-1.2.2-3.3.el7.x86_64.rpm
+curl https://download.docker.com/linux/centos/7/x86_64/stable/Packages/containerd.io-1.2.2-3.3.el7.x86_64.rpm
 sudo ${DNF} -y install --nobest docker-ce docker-ce-cli
 sudo ${DNF} -y install containerd.io-1.2.2-3.3.el7.x86_64.rpm
 rm -rf containerd.io-1.2.2-3.3.el7.x86_64.rpm
