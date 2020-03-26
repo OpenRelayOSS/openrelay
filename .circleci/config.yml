@@ -2,7 +2,7 @@ version: 2
 jobs:
   build-image:
     docker:
-      - image: centos8
+      - image: docker.io/centos
     steps:
       - checkout
       - run: ./scripts/setup_develop.sh
