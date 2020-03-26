@@ -5,6 +5,7 @@ jobs:
       - image: docker.io/centos
     steps:
       - checkout
+      - run: dnf install -y sudo
       - run: ./scripts/setup_develop.sh
       - run: ./scripts/build_all.sh
       - store_artifacts:
