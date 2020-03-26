@@ -1,0 +1,38 @@
+# Copyright (c) 2018 FurtherSystem Co.,Ltd. All rights reserved.
+#
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; version 2 of the License.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1335  USA
+
+[Unit]
+Description=OpenRelay 
+Before=network-pre.target
+Wants=network-pre.target
+
+[Service]
+EnvironmentFile=-/etc/sysconfig/openrelay.env
+Type=simple
+ExecStart=/usr/local/openrelay/bin/openrelay-boot.sh
+Restart=always
+RestartSec=90
+StartLimitBurst=3
+StartLimitInterval=600
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+User=oruser
+Group=oruser
+LimitNOFILE=60000
+StandardOutput=syslog
+StandardError=syslog
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,61 @@
+FROM centos:8
+MAINTAINER "kyadet"
+
+RUN mkdir -p /go/openrelay/bin /go/openrelay/cmd/openrelay /go/openrelay/internal/defs /go/openrelay/internal/srvs /go/openrelay/internal/net /log
+ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/lib:/lib:/opt/cuda/lib64:/usr/lib64:/lib64
+RUN dnf -y install epel-release
+RUN dnf -y install tar make gcc gcc-c++ libtool automake autoconf git pkgconfig libunwind libunwind-devel
+RUN curl https://dl.google.com/go/go1.13.8.linux-amd64.tar.gz | tar zx -C /
+RUN git clone git://github.com/jedisct1/libsodium.git && \
+git clone git://github.com/zeromq/libzmq.git && \
+git clone git://github.com/zeromq/czmq.git
+RUN cd libsodium && \
+./autogen.sh && ./configure && make && make check ;\
+make install && \
+cd - 
+RUN ldconfig ;\
+cd libzmq && \
+./autogen.sh && ./configure && make && make check ;\
+make install && \
+cd -
+RUN ldconfig ;\
+cd czmq && \
+./autogen.sh && ./configure && make && make check ;\
+make install && \
+cd - 
+RUN ldconfig ;\
+echo /usr/local/lib > /etc/ld.so.conf.d/zmq.conf ;\
+echo export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig >> ~/.bash_profile && \
+echo export GO111MDULE=on >> ~/.bash_profile && \
+echo export GOPATH=/go >> ~/.bash_profile && \
+echo 'export PATH=${PATH}:${GOPATH}/bin' >> ~/.bash_profile && \
+echo export PATH >> ~/.bash_profile && \
+ldconfig && \
+source ~/.bash_profile 
+ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+ENV GOPATH /go
+ENV PATH $PATH:/go/bin
+
+RUN go version
+EXPOSE 7000
+EXPOSE 7001
+EXPOSE 7002
+EXPOSE 7003
+EXPOSE 7004
+EXPOSE 7005
+EXPOSE 7006
+EXPOSE 8000
+
+ADD go.sum /go/openrelay/
+ADD go.mod /go/openrelay/
+ADD cmd/openrelay/main.go /go/openrelay/cmd/openrelay/
+ADD internal/defs/common.go /go/openrelay/internal/defs/
+ADD internal/defs/msg.go /go/openrelay/internal/defs/
+ADD internal/srvs/instance.go /go/openrelay/internal/srvs/
+ADD internal/srvs/relay.go /go/openrelay/internal/srvs/
+ADD internal/srvs/entry.go /go/openrelay/internal/srvs/
+ADD internal/srvs/console.go /go/openrelay/internal/srvs/
+ADD internal/net/recv.go /go/openrelay/internal/relay/
+ADD internal/net/lane.go /go/openrelay/internal/relay/
+RUN cd /go/openrelay && go build -o /go/bin/openrelay /go/openrelay/cmd/openrelay/main.go
+CMD ["/go/bin/openrelay","-log","3","-ehost","0.0.0.0","-eport","7000","-listen_ipv4","127.0.0.1","-stf_sports","7002,7004,7006","-stf_dports","7001,7003,7005","-aport","8000","-hbtimeout","30","-jointimeout","60","-recmode","0","-repmode","false"]

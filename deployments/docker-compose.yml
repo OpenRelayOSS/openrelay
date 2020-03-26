@@ -1,0 +1,16 @@
+# openrelay
+
+openrelay:
+  container_name: "openrelay"
+  build: ..
+  dockerfile: deployments/Dockerfile
+
+  ports:
+    - "7000:7000"
+    - "7001:7001"
+    - "7002:7002"
+    - "7003:7003"
+    - "7004:7004"
+    - "7005:7005"
+    - "7006:7006"
+    - "8000:8000"
