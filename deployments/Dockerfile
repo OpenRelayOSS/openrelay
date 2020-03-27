@@ -12,6 +12,6 @@ EXPOSE 7005
 EXPOSE 7006
 EXPOSE 8000
 
-ADD build/rpms/RPMS/x86_64/openrelay-1.0-1.x86_64.rpm /
-RUN rpm -ivh openrelay-1.0-1.x86_64.rpm
+ADD build/rpms/RPMS/x86_64/openrelay-0.9-8.x86_64.rpm /
+RUN rpm -ivh openrelay-0.9-8.x86_64.rpm
 CMD ["/usr/local/openrelay/bin/openrelay-boot.sh"]
