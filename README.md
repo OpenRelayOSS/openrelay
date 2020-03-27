@@ -1,4 +1,5 @@
 # OpenRelay - Realtime Relay Messaging Server
+[![CircleCI](https://circleci.com/gh/OpenRelayOSS/openrelay.svg?style=svg)](https://circleci.com/gh/OpenRelayOSS/openrelay)
 
 # How to start service.
 ./scripts/setup_develop.sh
