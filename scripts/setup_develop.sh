@@ -24,7 +24,8 @@ sudo ${DNF} -y install tar make gcc gcc-c++ libtool automake autoconf git pkgcon
 mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 
 if [ "x${DNF}" = "xdnf" ];then
-sudo ${DNF} -y install dnf-plugin-config-manager
+sudo ${DNF} -y remove podman
+sudo ${DNF} -y install dnf-plugin-config-manager firewalld
 sudo ${DNF} config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 curl https://download.docker.com/linux/centos/7/x86_64/stable/Packages/containerd.io-1.2.2-3.3.el7.x86_64.rpm
 sudo ${DNF} -y install --nobest docker-ce docker-ce-cli
