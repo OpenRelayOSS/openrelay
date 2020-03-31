@@ -254,9 +254,16 @@ func (o *OpenRelay) addRoomResponse(writeBuf *bytes.Buffer, relay defs.RoomInsta
 		copy(roomRes.Filter[:roomRes.FilterLen], room.Filter[:roomRes.FilterLen])
 	}
 	roomRes.ListenMode = byte(o.ListenMode)
-	copy(roomRes.ListenAddrIpv4[:], net.ParseIP(o.ListenIpv4).To4()[:4])
-	roomRes.ListenAddrIpv6 = [16]byte{}
-
+	ipv4Addr, err := net.ResolveIPAddr("ip4", o.ListenIpv4)
+	if err != nil {
+		return nil, err
+	}
+	copy(roomRes.ListenAddrIpv4[:], ipv4Addr.IP.To4()[:4])
+	ipv6Addr, err := net.ResolveIPAddr("ip6", o.ListenIpv6)
+	if err != nil {
+		return nil, err
+	}
+	copy(roomRes.ListenAddrIpv6[:], ipv6Addr.IP.To16())
 	err = binary.Write(writeBuf, binary.LittleEndian, roomRes)
 	if err != nil {
 		return nil, err
@@ -277,7 +284,10 @@ func (o *OpenRelay) addRoomResponse(writeBuf *bytes.Buffer, relay defs.RoomInsta
 		log.Printf("response room filter length :%d", roomRes.FilterLen)
 		log.Printf("response room listen mode :%d", roomRes.ListenMode)
 		log.Printf("response room listen addr ipv4(origin) :%s", o.ListenIpv4)
+		log.Printf("response room listen addr ipv4(resolve addr) :%s", ipv4Addr.IP.String())
 		log.Printf("response room listen addr ipv4(parsed) :%x", roomRes.ListenAddrIpv4)
+		log.Printf("response room listen addr ipv6(origin) :%s", o.ListenIpv6)
+		log.Printf("response room listen addr ipv6(resolve addr) :%s", ipv6Addr.IP.String())
 		log.Printf("response room listen addr ipv6(parsed) :%x", roomRes.ListenAddrIpv6)
 	}
 	return writeBuf, nil

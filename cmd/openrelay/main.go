@@ -16,16 +16,9 @@
 package main
 
 import (
-	crand "crypto/rand"
+	"os"
+	"os/signal"
 	"flag"
-	"log"
-	"math"
-	"math/big"
-	"math/rand"
-	"strconv"
-	"strings"
-	"time"
-	"openrelay/internal/defs"
 	"openrelay/internal/srvs"
 )
 
@@ -68,8 +61,8 @@ func param() {
 	flag.IntVar(&hbTimeout, "hbtimeout", 30, "heatbeat timeout sec")
 	flag.IntVar(&joinTimeout, "jointimeout", 180, "heatbeat timeout sec")
 	flag.IntVar(&listenMode, "listenmode", 3, "0=localnetonly, 1=ipv4+ipv6both, 2=ipv6only, 3=ipv4only, 1=ipv4+ipv6bothauto, 2=ipv6onlyauto, 3=ipv4onlyauto")
-	flag.StringVar(&listenIpv4, "listen_ipv4", "", "listen global ip addr v4")
-	flag.StringVar(&listenIpv6, "listen_ipv6", "", "listen global ip addr v6")
+	flag.StringVar(&listenIpv4, "listen_ipv4", "localhost", "listen global ip addr v4")
+	flag.StringVar(&listenIpv6, "listen_ipv6", "localhost6", "listen global ip addr v6")
 	flag.StringVar(&entryHost, "ehost", "localhost", "entry http service listen host")
 	flag.StringVar(&entryPort, "eport", "7000", "entry http service port")
 	flag.StringVar(&adminHost, "ahost", "localhost", "admin tcp console listen host")
@@ -102,59 +95,11 @@ func main() {
                                  listenMode, logLevel, logDir,
                                  recMode, repMode,
                                  hbTimeout, joinTimeout)
-	Initialize(o)
+	o.RelayInitialize()
 	go o.ConsoleServ()
 	go o.EntryServ()
-	// TODO setup trap signal
-	for {
-		time.Sleep(1 * time.Second) // forcely return context
-	}
-}
 
-func Initialize(o *srvs.OpenRelay) {
-        var err error
-        seed, _ := crand.Int(crand.Reader, big.NewInt(math.MaxInt64)) // TODO mt19937
-        rand.Seed(seed.Int64())
-        // check stl enable but didn't set
-        stfDealPortArray := strings.Split(o.StfDealPorts, ",")
-        stfSubPortArray := strings.Split(o.StfSubPorts, ",")
-        portCount := len(stfDealPortArray)
-        for index := 0; index < portCount; index++ {
-                // check port valid
-                // check port count
-                // check port conflict
-                room := defs.RoomParameter{}
-                room.ListenMode = byte(listenMode)
-                relayInstance := defs.RoomInstance{EnableBflag: false}
-                room.Id, err = defs.NewGuid()
-                if err != nil {
-                        log.Fatal("guid cannot create, initialize faild. ", err)
-                }
-                roomIdStr := string(room.Id[:])
-                var port int
-                port, err = strconv.Atoi(stfDealPortArray[index])
-                if err != nil {
-                        log.Fatal("invalid port, initialize faild. ", err)
-                }
-                room.StfDealPort = uint16(port)
-                port, err = strconv.Atoi(stfSubPortArray[index])
-                if err != nil {
-                        log.Fatal("invalid port, initialize faild. ", err)
-                }
-                room.StfSubPort = uint16(port)
-                room.UseStateless = false
-                o.HotRoomQueue = append(o.HotRoomQueue, room.Id)
-                o.RoomQueue[roomIdStr] = &room
-                o.RelayQueue[roomIdStr] = &relayInstance
-        }
-        for _, id := range o.HotRoomQueue {
-                idStr := string(id[:])
-                o.Clean(o.RelayQueue[idStr], o.RoomQueue[idStr].Id)
-                go o.RelayServ(o.RoomQueue[idStr], o.RelayQueue[idStr])
-                go o.Heatbeat(o.RelayQueue[idStr], id)
-        }
-        if o.LogLevel >= defs.INFO {
-                log.Printf("available room :%d", len(o.HotRoomQueue))
-                log.Printf("initialize ok")
-        }
+	quit := make(chan os.Signal)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
 }

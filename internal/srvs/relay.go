@@ -16,6 +16,10 @@
 package srvs
 
 import (
+        crand "crypto/rand"
+        "math"
+        "math/big"
+        "math/rand"
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
@@ -24,10 +28,59 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 	"openrelay/internal/defs"
 //	"github.com/pion/dtls/examples/util"
 )
+
+func (o *OpenRelay) RelayInitialize() {
+        var err error
+        seed, _ := crand.Int(crand.Reader, big.NewInt(math.MaxInt64)) // TODO mt19937
+        rand.Seed(seed.Int64())
+        // check stl enable but didn't set
+        stfDealPortArray := strings.Split(o.StfDealPorts, ",")
+        stfSubPortArray := strings.Split(o.StfSubPorts, ",")
+        portCount := len(stfDealPortArray)
+        for index := 0; index < portCount; index++ {
+                // check port valid
+                // check port count
+                // check port conflict
+                room := defs.RoomParameter{}
+                room.ListenMode = byte(o.ListenMode)
+                relayInstance := defs.RoomInstance{EnableBflag: false}
+                room.Id, err = defs.NewGuid()
+                if err != nil {
+                        log.Fatal("guid cannot create, initialize faild. ", err)
+                }
+                roomIdStr := string(room.Id[:])
+                var port int
+                port, err = strconv.Atoi(stfDealPortArray[index])
+                if err != nil {
+                        log.Fatal("invalid port, initialize faild. ", err)
+                }
+                room.StfDealPort = uint16(port)
+                port, err = strconv.Atoi(stfSubPortArray[index])
+                if err != nil {
+                        log.Fatal("invalid port, initialize faild. ", err)
+                }
+                room.StfSubPort = uint16(port)
+                room.UseStateless = false
+                o.HotRoomQueue = append(o.HotRoomQueue, room.Id)
+                o.RoomQueue[roomIdStr] = &room
+                o.RelayQueue[roomIdStr] = &relayInstance
+        }
+        for _, id := range o.HotRoomQueue {
+                idStr := string(id[:])
+                o.Clean(o.RelayQueue[idStr], o.RoomQueue[idStr].Id)
+                go o.RelayServ(o.RoomQueue[idStr], o.RelayQueue[idStr])
+                go o.Heatbeat(o.RelayQueue[idStr], id)
+        }
+        if o.LogLevel >= defs.INFO {
+                log.Printf("available room :%d", len(o.HotRoomQueue))
+                log.Printf("initialize ok")
+        }
+}
 
 func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance) {
 	var err error
