@@ -62,7 +62,7 @@ func param() {
 	flag.IntVar(&joinTimeout, "jointimeout", 180, "heatbeat timeout sec")
 	flag.IntVar(&listenMode, "listenmode", 3, "0=localnetonly, 1=ipv4+ipv6both, 2=ipv6only, 3=ipv4only, 1=ipv4+ipv6bothauto, 2=ipv6onlyauto, 3=ipv4onlyauto")
 	flag.StringVar(&listenIpv4, "listen_ipv4", "localhost", "listen global ip addr v4")
-	flag.StringVar(&listenIpv6, "listen_ipv6", "localhost6", "listen global ip addr v6")
+	flag.StringVar(&listenIpv6, "listen_ipv6", "localhost", "listen global ip addr v6")
 	flag.StringVar(&entryHost, "ehost", "localhost", "entry http service listen host")
 	flag.StringVar(&entryPort, "eport", "7000", "entry http service port")
 	flag.StringVar(&adminHost, "ahost", "localhost", "admin tcp console listen host")
