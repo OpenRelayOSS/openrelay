@@ -16,6 +16,11 @@
 
 source `dirname $0`/common.env
 
+NEED_DOCKER_BUILD=0
+if [ "x${1}" = "x-docker" ];then
+NEED_DOCKER_BUILD=1
+fi
+
 source ~/.bash_profile
 HOME_PATH=${HOME}
 ENTRY_POINT=${REPO_ROOT_PATH}/cmd/openrelay/main.go
@@ -79,6 +84,8 @@ ${RPMBUILD} -bb --clean ${RPMBUILD_SPECS_PATH} || die "rpmbuild failed"
 mkdir -p ${ORIGIN_RPMS_PATH}/ || die "mkdir failed"
 cp ${RPMBUILD_RPMS_PATH}/${IMAGE_FULLNAME}.rpm ${ORIGIN_RPMS_PATH}/ || die "copy failed"
 
-sudo ${PODMAN_COMPOSE} -f deployments/docker-compose.yml build || die "docker build failed"
+if [ "x${NEED_DOCKER_BUILD}" = "x1" ];then
+    sudo ${PODMAN_COMPOSE} -f deployments/docker-compose.yml build || die "docker build failed"
+fi
 
 cd ${RET_DIR}
