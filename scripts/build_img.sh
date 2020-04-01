@@ -25,6 +25,14 @@ GIT_COMMIT=$(git rev-parse HEAD)
 LD_FLAGS="-X main.GitCommit=${GIT_COMMIT} $LD_FLAGS"
 export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 SOURCES_PATH=${REPO_ROOT_PATH}/build/rpms/SOURCES
+ORIGIN_SOURCES_PATH=${REPO_ROOT_PATH}/build/rpms/SOURCES/${IMAGE_FULLNAME}.tar.gz
+ORIGIN_SPECS_PATH=${REPO_ROOT_PATH}/build/rpms/SPECS/${IMAGE_FULLNAME}.spec
+ORIGIN_RPMS_PATH=${REPO_ROOT_PATH}/build/rpms/RPMS/${IMAGE_ARCH}
+RPMBUILD=rpmbuild
+RPMBUILD_ROOT_PATH=${HOME}/${RPMBUILD}/
+RPMBUILD_SOURCES_PATH=${HOME}/${RPMBUILD}/SOURCES/
+RPMBUILD_SPECS_PATH=${HOME}/${RPMBUILD}/SPECS/${IMAGE_FULLNAME}.spec
+RPMBUILD_RPMS_PATH=${HOME}/${RPMBUILD}/RPMS/${IMAGE_ARCH}/
 
 #XC_ARCH=${XC_ARCH:-"386 amd64 arm"}
 #XC_OS=${XC_OS:-linux darwin windows freebsd openbsd solaris}
@@ -38,6 +46,10 @@ fi
 rm -rf ${REPO_ROOT_PATH}/bin/${IMAGE_NAME}
 rm -rf ${REPO_ROOT_PATH}/pkg/*
 rm -rf ${SOURCES_PATH}/*
+rm -rf ${ORIGIN_RPMS_PATH}
+rm -rf ${HOME}/${RPMBUILD}/SPECS/*.spec
+rm -rf ${HOME}/${RPMBUILD}/SOURCES/*.tar.gz
+rm -rf ${HOME}/${RPMBUILD}/RPMS/${IMAGE_ARCH}
 
 # preprocess here.
 
@@ -57,5 +69,16 @@ cp ${REPO_ROOT_PATH}/extlib/libzmq.so.*.*.* ${SOURCES_PATH}/${IMAGE_FULLNAME}/
 cd ${SOURCES_PATH}
 tar zcvf ${IMAGE_FULLNAME}.tar.gz ${IMAGE_FULLNAME}
 cd -
+
+cd ${REPO_ROOT_PATH}
+
+cp ${ORIGIN_SOURCES_PATH} ${RPMBUILD_SOURCES_PATH} || die "${ORIGIN_SPECS_PATH} ${RPMBUILD_SOURCES_PATH} copy failed"
+cp ${ORIGIN_SPECS_PATH} ${RPMBUILD_SPECS_PATH} || die "${ORIGIN_SPECS_PATH} ${RPMBUILD_SPECS_PATH} copy failed"
+${RPMBUILD} -bb --clean ${RPMBUILD_SPECS_PATH} || die "rpmbuild failed"
+
+mkdir -p ${ORIGIN_RPMS_PATH}/ || die "mkdir failed"
+cp ${RPMBUILD_RPMS_PATH}/${IMAGE_FULLNAME}.rpm ${ORIGIN_RPMS_PATH}/ || die "copy failed"
+
+sudo ${PODMAN_COMPOSE} -f deployments/docker-compose.yml build || die "docker build failed"
 
 cd ${RET_DIR}

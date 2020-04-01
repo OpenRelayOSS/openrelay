@@ -17,13 +17,9 @@
 source `dirname $0`/common.env
 cd ${REPO_ROOT_PATH}
 
-sudo ${REPO_ROOT_PATH}/scripts/clean.sh || die "clean failed."
-
 ${REPO_ROOT_PATH}/scripts/build_extlib.sh || die "build extlib failed."
 
 ${REPO_ROOT_PATH}/scripts/build_img.sh || die "build image failed."
-
-${REPO_ROOT_PATH}/scripts/build_rpm.sh || die "build rpm failed."
 
 sudo ${REPO_ROOT_PATH}/scripts/docker_compose.sh build || die "docker-compose failed."
 

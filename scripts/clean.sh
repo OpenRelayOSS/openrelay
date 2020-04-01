@@ -16,16 +16,24 @@
 
 source `dirname $0`/common.env
 
+IS_FORCE=1
+if [ "x${1}" = "x-f" ];then
+IS_FORCE=0
+fi
+
+is_force(){
+    return ${IS_FORCE}
+}
+
 cd ${REPO_ROOT_PATH}
 
 rm -f ${REPO_ROOT_PATH}/bin/${IMAGE_NAME}
-LIST=`${PODMAN} images | grep deployments_openrelay | awk '{print $3}' | grep -v IMAGE`
-for i in $LIST; do sudo docker rmi -f $i; done
-#${PODMAN} system prune --all -f
+LIST=`sudo ${PODMAN} images | grep deployments_openrelay | awk '{print $3}' | grep -v IMAGE`
+for i in $LIST; do sudo ${PODMAN} rmi -f $i; done
+is_force && sudo ${PODMAN} system prune --all -f
+is_force && rm -rf ${REPO_ROOT_PATH}/extlib
 
-rm -rf ${REPO_ROOT_PATH}/extlib
-#rm -rf ~/go
-
+#is_force && rm -rf ~/go
 #${DNF} -y remove epel-release
 #${DNF} -y remove tar make gcc gcc-c++ libtool automake autoconf git pkgconfig libunwind libunwind-devel
 
