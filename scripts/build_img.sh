@@ -23,7 +23,8 @@ fi
 
 source ~/.bash_profile
 HOME_PATH=${HOME}
-ENTRY_POINT=${REPO_ROOT_PATH}/cmd/openrelay/main.go
+ENTRY_POINT_MAIN=${REPO_ROOT_PATH}/cmd/openrelay/main.go
+ENTRY_POINT_CLIENT=${REPO_ROOT_PATH}/cmd/openrelay-client/replay.go
 GOCC=go
 GOXC=gox
 GIT_COMMIT=$(git rev-parse HEAD)
@@ -48,7 +49,8 @@ if [[ -n "${OR_RELEASE}" ]]; then
 fi
 
 # clean directories
-rm -rf ${REPO_ROOT_PATH}/bin/${IMAGE_NAME}
+rm -rf ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_MAIN}
+rm -rf ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_CLIENT}
 rm -rf ${REPO_ROOT_PATH}/pkg/*
 rm -rf ${SOURCES_PATH}/*
 rm -rf ${ORIGIN_RPMS_PATH}
@@ -58,15 +60,17 @@ rm -rf ${HOME}/${RPMBUILD}/RPMS/${IMAGE_ARCH}
 
 # preprocess here.
 
-echo ${GOCC} build -o ${REPO_ROOT_PATH}/bin/${IMAGE_NAME} -ldflags \"$LD_FLAGS\" ${ENTRY_POINT}
-${GOCC} build -o ${REPO_ROOT_PATH}/bin/${IMAGE_NAME} -ldflags "$LD_FLAGS" ${ENTRY_POINT}
-#go build -o ${REPO_ROOT_PATH}/bin/replay cmd/openrelay/replay.go
+echo ${GOCC} build -o ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_MAIN} -ldflags \"$LD_FLAGS\" ${ENTRY_POINT_MAIN}
+${GOCC} build -o ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_MAIN} -ldflags "$LD_FLAGS" ${ENTRY_POINT_MAIN}
+echo ${GOCC} build -o ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_CLIENT} -ldflags \"$LD_FLAGS\" ${ENTRY_POINT_CLIENT}
+${GOCC} build -o ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_CLIENT} -ldflags "$LD_FLAGS" ${ENTRY_POINT_CLIENT}
 
 mkdir -p ${SOURCES_PATH}/${IMAGE_FULLNAME}
-cp ${REPO_ROOT_PATH}/bin/${IMAGE_NAME} ${SOURCES_PATH}/${IMAGE_FULLNAME}/
-cp ${REPO_ROOT_PATH}/configs/${IMAGE_NAME}-boot.sh ${SOURCES_PATH}/${IMAGE_FULLNAME}/
-cp ${REPO_ROOT_PATH}/configs/${IMAGE_NAME}.service ${SOURCES_PATH}/${IMAGE_FULLNAME}/
-cp ${REPO_ROOT_PATH}/configs/${IMAGE_NAME}.env ${SOURCES_PATH}/${IMAGE_FULLNAME}/
+cp ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_MAIN} ${SOURCES_PATH}/${IMAGE_FULLNAME}/
+cp ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_CLIENT} ${SOURCES_PATH}/${IMAGE_FULLNAME}/
+cp ${REPO_ROOT_PATH}/configs/${IMAGE_NAME_MAIN}-boot.sh ${SOURCES_PATH}/${IMAGE_FULLNAME}/
+cp ${REPO_ROOT_PATH}/configs/${IMAGE_NAME_MAIN}.service ${SOURCES_PATH}/${IMAGE_FULLNAME}/
+cp ${REPO_ROOT_PATH}/configs/${IMAGE_NAME_MAIN}.env ${SOURCES_PATH}/${IMAGE_FULLNAME}/
 cp ${REPO_ROOT_PATH}/extlib/libczmq.so.*.*.* ${SOURCES_PATH}/${IMAGE_FULLNAME}/
 cp ${REPO_ROOT_PATH}/extlib/libsodium.so.*.*.* ${SOURCES_PATH}/${IMAGE_FULLNAME}/
 cp ${REPO_ROOT_PATH}/extlib/libzmq.so.*.*.* ${SOURCES_PATH}/${IMAGE_FULLNAME}/

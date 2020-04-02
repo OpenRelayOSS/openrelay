@@ -27,7 +27,8 @@ is_force(){
 
 cd ${REPO_ROOT_PATH}
 
-rm -f ${REPO_ROOT_PATH}/bin/${IMAGE_NAME}
+rm -f ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_MAIN}
+rm -f ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_CLIENT}
 LIST=`sudo ${PODMAN} images | grep deployments_openrelay | awk '{print $3}' | grep -v IMAGE`
 for i in $LIST; do sudo ${PODMAN} rmi -f $i; done
 is_force && sudo ${PODMAN} system prune --all -f

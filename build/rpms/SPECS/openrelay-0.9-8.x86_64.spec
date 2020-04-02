@@ -1,5 +1,6 @@
 %define oruser_uid     811
 %define oruser_gid     %{oruser_uid}
+%define client_name    replay
 
 Name:		openrelay
 Version:	0.9
@@ -29,6 +30,7 @@ rm -rf %{buildroot}
 %install
 install -d %{buildroot}/var/log/%{name} %{buildroot}/usr/local/%{name}/bin/ %{buildroot}/usr/local/%{name}/lib/ %{buildroot}%{_sysconfdir}/sysconfig/ %{buildroot}%{_sysconfdir}/systemd/system/
 install %{name} %{buildroot}/usr/local/%{name}/bin/
+install %{client_name} %{buildroot}/usr/local/%{name}/bin/
 install %{name}-boot.sh %{buildroot}/usr/local/%{name}/bin/
 install libsodium.so.* %{buildroot}/usr/local/%{name}/lib/
 install libzmq.so.* %{buildroot}/usr/local/%{name}/lib/
@@ -76,6 +78,7 @@ fi
 %config(noreplace) %{_sysconfdir}/sysconfig/%{name}.env
 %defattr(0755, oruser, oruser, 0755)
 /usr/local/%{name}/bin/%{name}
+/usr/local/%{name}/bin/%{client_name}
 /usr/local/%{name}/bin/%{name}-boot.sh
 /var/log/%{name}
 %defattr(-, -, -, -)
