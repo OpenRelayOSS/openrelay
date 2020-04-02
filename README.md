@@ -13,7 +13,6 @@ sudo ./scripts/docker_compose.sh up
 # License
 GNU General Public License v2.0
 
-# Copyright
-FurtherSystem Co.,Ltd.
+@see [DEPENDENT LICENSES](https://github.com/OpenRelayOSS/openrelay/blob/master/LICENSE)
 
-and details @see https:/github.com/OpenRelayOSS/openrelay/LICENSE
+Copyright FurtherSystem Co.,Ltd.
