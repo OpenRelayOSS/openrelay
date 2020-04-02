@@ -15,3 +15,5 @@ GNU General Public License v2.0
 
 # Copyright
 FurtherSystem Co.,Ltd.
+
+and details @see https:/github.com/OpenRelayOSS/openrelay/LICENSE
