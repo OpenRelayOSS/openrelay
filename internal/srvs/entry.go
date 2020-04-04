@@ -20,7 +20,6 @@ import (
         "encoding/binary"
         "encoding/hex"
         "io"
-        "log"
         "net"
         "net/http"
         "strconv"
@@ -89,9 +88,7 @@ func (o *OpenRelay) Rooms(w http.ResponseWriter, r *http.Request) {
 		writeBuf, err = o.addResponseBytes(writeBuf, defs.OPENRELAY_RESPONSE_CODE_OK)
 		err = binary.Write(writeBuf, binary.LittleEndian, uint16(len(o.ReserveRooms)))
 		if err != nil {
-			if o.LogLevel >= defs.ERRORONLY {
-				log.Println("binary write failed. ", err)
-			}
+			log.Println(defs.ERRORONLY, "binary write failed. ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
 			return
@@ -100,9 +97,7 @@ func (o *OpenRelay) Rooms(w http.ResponseWriter, r *http.Request) {
 			roomIdStr := string(roomId[:])
 			writeBuf, err = o.addRoomResponse(writeBuf, *o.RelayQueue[roomIdStr], *o.RoomQueue[roomIdStr])
 			if err != nil {
-				if o.LogLevel >= defs.ERRORONLY {
-					log.Println("binary write failed. ", err)
-				}
+				log.Println(defs.ERRORONLY, "binary write failed. ", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
 				return
@@ -149,9 +144,7 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 		roomIdStr = string(roomId[:])
 		writeBuf, err = o.addResponseBytes(writeBuf, defs.OPENRELAY_RESPONSE_CODE_NG_CREATE_ROOM_ALREADY_EXISTS)
 		if err != nil {
-			if o.LogLevel >= defs.ERRORONLY {
-				log.Println("binary write failed. ", err)
-			}
+			log.Println(defs.ERRORONLY, "binary write failed. ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
 			return
@@ -167,9 +160,7 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 		body := make([]byte, 2) //uint16 size
 		_, err := r.Body.Read(body)
 		if err != nil && err != io.EOF {
-			if o.LogLevel >= defs.ERRORONLY {
-				log.Println("polling failed. ", err)
-			}
+			log.Println(defs.ERRORONLY, "polling failed. ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_REQUEST_READ_FAILED))
 			return
@@ -179,9 +170,7 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 		var maxPlayers uint16
 		err = binary.Read(readBuf, binary.LittleEndian, &maxPlayers)
 		if err != nil {
-			if o.LogLevel >= defs.ERRORONLY {
-				log.Println("binary read failed. invalid request data", err)
-			}
+			log.Println(defs.ERRORONLY, "binary read failed. invalid request data", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_REQUEST_READ_FAILED))
 			return
@@ -192,9 +181,7 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 
 		writeBuf, err = o.addResponseBytes(writeBuf, defs.OPENRELAY_RESPONSE_CODE_OK_ROOM_ASSGIN_AND_CREATED)
 		if err != nil {
-			if o.LogLevel >= defs.ERRORONLY {
-				log.Println("binary write failed. ", err)
-			}
+			log.Println(defs.ERRORONLY, "binary write failed. ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
 			return
@@ -204,9 +191,7 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 
 	writeBuf, err = o.addRoomResponse(writeBuf, *o.RelayQueue[roomIdStr], *o.RoomQueue[roomIdStr])
 	if err != nil {
-		if o.LogLevel >= defs.ERRORONLY {
-			log.Println("binary write failed. ", err)
-		}
+		log.Println(defs.ERRORONLY, "binary write failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
 		return
@@ -268,28 +253,26 @@ func (o *OpenRelay) addRoomResponse(writeBuf *bytes.Buffer, relay defs.RoomInsta
 	if err != nil {
 		return nil, err
 	}
-	if o.LogLevel >= defs.INFO {
-		log.Printf("response room roomId :%s", defs.GuidFormatString(roomRes.Id))
-	}
-	if o.LogLevel >= defs.VERBOSE {
-		log.Printf("response room max players: %d", int(roomRes.Capacity))
-		log.Printf("response room UserCount :%d", roomRes.UserCount)
-		log.Printf("response room statefull deal port: %d", roomRes.StfDealPort)
-		log.Printf("response room statefull subscribe port: %d", roomRes.StfSubPort)
-		log.Printf("response room stateless deal port: %d", roomRes.StlDealPort)
-		log.Printf("response room stateless subscribe port: %d", roomRes.StlSubPort)
-		log.Printf("response room name :%s", roomRes.Name)
-		log.Printf("response room name length :%d", roomRes.NameLen)
-		log.Printf("response room filter :%s", roomRes.Filter)
-		log.Printf("response room filter length :%d", roomRes.FilterLen)
-		log.Printf("response room listen mode :%d", roomRes.ListenMode)
-		log.Printf("response room listen addr ipv4(origin) :%s", o.ListenIpv4)
-		log.Printf("response room listen addr ipv4(resolve addr) :%s", ipv4Addr.IP.String())
-		log.Printf("response room listen addr ipv4(parsed) :%x", roomRes.ListenAddrIpv4)
-		log.Printf("response room listen addr ipv6(origin) :%s", o.ListenIpv6)
-		log.Printf("response room listen addr ipv6(resolve addr) :%s", ipv6Addr.IP.String())
-		log.Printf("response room listen addr ipv6(parsed) :%x", roomRes.ListenAddrIpv6)
-	}
+
+	log.Printf(defs.INFO, "response room roomId :%s", defs.GuidFormatString(roomRes.Id))
+
+	log.Printf(defs.VERBOSE, "response room max players: %d", int(roomRes.Capacity))
+	log.Printf(defs.VERBOSE, "response room UserCount :%d", roomRes.UserCount)
+	log.Printf(defs.VERBOSE, "response room statefull deal port: %d", roomRes.StfDealPort)
+	log.Printf(defs.VERBOSE, "response room statefull subscribe port: %d", roomRes.StfSubPort)
+	log.Printf(defs.VERBOSE, "response room stateless deal port: %d", roomRes.StlDealPort)
+	log.Printf(defs.VERBOSE, "response room stateless subscribe port: %d", roomRes.StlSubPort)
+	log.Printf(defs.VERBOSE, "response room name :%s", roomRes.Name)
+	log.Printf(defs.VERBOSE, "response room name length :%d", roomRes.NameLen)
+	log.Printf(defs.VERBOSE, "response room filter :%s", roomRes.Filter)
+	log.Printf(defs.VERBOSE, "response room filter length :%d", roomRes.FilterLen)
+	log.Printf(defs.VERBOSE, "response room listen mode :%d", roomRes.ListenMode)
+	log.Printf(defs.VERBOSE, "response room listen addr ipv4(origin) :%s", o.ListenIpv4)
+	log.Printf(defs.VERBOSE, "response room listen addr ipv4(resolve addr) :%s", ipv4Addr.IP.String())
+	log.Printf(defs.VERBOSE, "response room listen addr ipv4(parsed) :%x", roomRes.ListenAddrIpv4)
+	log.Printf(defs.VERBOSE, "response room listen addr ipv6(origin) :%s", o.ListenIpv6)
+	log.Printf(defs.VERBOSE, "response room listen addr ipv6(resolve addr) :%s", ipv6Addr.IP.String())
+	log.Printf(defs.VERBOSE, "response room listen addr ipv6(parsed) :%x", roomRes.ListenAddrIpv6)
 	return writeBuf, nil
 }
 
@@ -322,18 +305,14 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 
 	length, err := strconv.Atoi(r.Header.Get("Content-Length"))
 	if err != nil {
-		if o.LogLevel >= defs.ERRORONLY {
-			log.Println("polling failed. ", err)
-		}
+		log.Println(defs.ERRORONLY, "polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	body := make([]byte, length)
 	length, err = r.Body.Read(body)
 	if err != nil && err != io.EOF {
-		if o.LogLevel >= defs.ERRORONLY {
-			log.Println("polling failed. ", err)
-		}
+		log.Println(defs.ERRORONLY, "polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -341,9 +320,7 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 
 	joinSeed, err := o.readJoinSeed(readBuf)
 	if err != nil {
-		if o.LogLevel >= defs.ERRORONLY {
-			log.Println("polling failed. ", err)
-		}
+		log.Println(defs.ERRORONLY, "polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -372,9 +349,7 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 		if len(joinPollingQueue) == 0 {
 			res, err := o.JoinPrepareResponse(relay, joinSeed)
 			if err != nil {
-				if o.LogLevel >= defs.INFO {
-					log.Println("polling failed. ", err)
-				}
+				log.Println(defs.INFO, "polling failed. ", err)
 				w.WriteHeader(http.StatusBadRequest)
 			} else {
 				joinProcessQueue.Seed = hexJoinSeed
@@ -387,9 +362,7 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 		} else if check := hex.EncodeToString(joinPollingQueue[0]); check == hexJoinSeed {
 			res, err := o.JoinPrepareResponse(relay, joinSeed)
 			if err != nil {
-				if o.LogLevel >= defs.INFO {
-					log.Println("polling failed. ", err)
-				}
+				log.Println(defs.INFO, "polling failed. ", err)
 				w.WriteHeader(http.StatusBadRequest)
 			} else {
 				joinProcessQueue.Seed = hexJoinSeed
@@ -438,17 +411,15 @@ func contains(slice [][]byte, elem []byte) bool {
 //		return header, fmt.Errorf("invalid FrameVersion %d != %d", FrameVersion, header.Ver)
 //	}
 //
-//	if o.LogLevel >= defs.VVERBOSE {
-//		log.Printf("received header.Ver: '%d' ", header.Ver)
-//		log.Printf("received header.RelayCode: '%d' ", header.RelayCode)
-//		log.Printf("received header.ContentCode: '%d' ", header.ContentCode)
-//		log.Printf("received header.DestCode: '%d' ", header.DestCode)
-//		log.Printf("received header.Mask: '%d' ", header.Mask)
-//		log.Printf("received header.SrcUid: '%d' ", header.SrcUid)
-//		log.Printf("received header.SrcOid: '%d' ", header.SrcOid)
-//		log.Printf("received header.DestLen: '%d' ", header.DestLen)
-//		log.Printf("received header.ContentLen: '%d' ", header.ContentLen)
-//	}
+//	log.Printf(defs.VVERBOSE, "received header.Ver: '%d' ", header.Ver)
+//	log.Printf(defs.VVERBOSE, "received header.RelayCode: '%d' ", header.RelayCode)
+//	log.Printf(defs.VVERBOSE, "received header.ContentCode: '%d' ", header.ContentCode)
+//	log.Printf(defs.VVERBOSE, "received header.DestCode: '%d' ", header.DestCode)
+//	log.Printf(defs.VVERBOSE, "received header.Mask: '%d' ", header.Mask)
+//	log.Printf(defs.VVERBOSE, "received header.SrcUid: '%d' ", header.SrcUid)
+//	log.Printf(defs.VVERBOSE, "received header.SrcOid: '%d' ", header.SrcOid)
+//	log.Printf(defs.VVERBOSE, "received header.DestLen: '%d' ", header.DestLen)
+//	log.Printf(defs.VVERBOSE, "received header.ContentLen: '%d' ", header.ContentLen)
 //	return header, nil
 //}
 
@@ -459,9 +430,7 @@ func (o *OpenRelay) readJoinSeed(readBuf *bytes.Reader) ([]byte, error) {
 		return nil, err
 	}
 
-	if o.LogLevel >= defs.VVERBOSE {
-		log.Printf("received join seedLen: '%d' ", seedLen)
-	}
+	log.Printf(defs.VVERBOSE, "received join seedLen: '%d' ", seedLen)
 
 	joinSeed := make([]byte, seedLen)
 	err = binary.Read(readBuf, binary.LittleEndian, &joinSeed)
@@ -469,9 +438,7 @@ func (o *OpenRelay) readJoinSeed(readBuf *bytes.Reader) ([]byte, error) {
 		return nil, err
 	}
 
-	if o.LogLevel >= defs.VVERBOSE {
-		log.Printf("received join seed: '%s' ", hex.EncodeToString(joinSeed))
-	}
+	log.Printf(defs.VVERBOSE, "received join seed: '%s' ", hex.EncodeToString(joinSeed))
 	return joinSeed, nil
 }
 
@@ -495,9 +462,7 @@ func (o *OpenRelay) JoinPrepareResponse(relay *defs.RoomInstance, joinSeed []byt
 	alignmentLen := uint16(0)
 	alignment := []byte{}
 	relay.Hbs[assginUid] = time.Now().Unix()
-	if o.LogLevel >= defs.INFO {
-		log.Println("-> join ", relay.LastUid, ", seed ", hex.EncodeToString(joinSeed))
-	}
+	log.Println(defs.INFO, "-> join ", relay.LastUid, ", seed ", hex.EncodeToString(joinSeed))
 
 	err = binary.Write(writeBuf, binary.LittleEndian, relay.MasterUid)
 	if err != nil {
@@ -570,18 +535,14 @@ func (o *OpenRelay) RoomProp(w http.ResponseWriter, r *http.Request) {
 	writeBuf := new(bytes.Buffer)
 	writeBuf, err = o.addResponseBytes(writeBuf, defs.OPENRELAY_RESPONSE_CODE_OK)
 	if err != nil {
-		if o.LogLevel >= defs.ERRORONLY {
-			log.Println("binary write failed. ", err)
-		}
+		log.Println(defs.ERRORONLY, "binary write failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
 		return
 	}
 	err = binary.Write(writeBuf, binary.LittleEndian, contentLen)
 	if err != nil {
-		if o.LogLevel >= defs.ERRORONLY {
-			log.Println("binary write failed. ", err)
-		}
+		log.Println(defs.ERRORONLY, "binary write failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
 		return
@@ -589,9 +550,7 @@ func (o *OpenRelay) RoomProp(w http.ResponseWriter, r *http.Request) {
 
 	err = binary.Write(writeBuf, binary.LittleEndian, properties)
 	if err != nil {
-		if o.LogLevel >= defs.ERRORONLY {
-			log.Println("binary write failed. ", err)
-		}
+		log.Println(defs.ERRORONLY, "binary write failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
 		return
@@ -613,18 +572,14 @@ func (o *OpenRelay) JoinPrepareComplete(w http.ResponseWriter, r *http.Request) 
 
 	length, err := strconv.Atoi(r.Header.Get("Content-Length"))
 	if err != nil {
-		if o.LogLevel >= defs.ERRORONLY {
-			log.Println("polling failed. ", err)
-		}
+		log.Println(defs.ERRORONLY, "polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	body := make([]byte, length)
 	length, err = r.Body.Read(body)
 	if err != nil && err != io.EOF {
-		if o.LogLevel >= defs.ERRORONLY {
-			log.Println("polling failed. ", err)
-		}
+		log.Println(defs.ERRORONLY, "polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -632,9 +587,7 @@ func (o *OpenRelay) JoinPrepareComplete(w http.ResponseWriter, r *http.Request) 
 
 	joinSeed, err := o.readJoinSeed(readBuf)
 	if err != nil {
-		if o.LogLevel >= defs.ERRORONLY {
-			log.Println("polling failed. ", err)
-		}
+		log.Println(defs.ERRORONLY, "polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

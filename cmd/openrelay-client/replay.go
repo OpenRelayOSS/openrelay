@@ -26,14 +26,13 @@ import (
 	"log"
 	"os"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 )
 
 type replay struct {
 	Tick  int64
-	Frame []string
+	Frame []byte
 }
 
 type client struct {
@@ -94,9 +93,10 @@ func main() {
 	scanner := bufio.NewScanner(replayFile)
 	for scanner.Scan() {
 		rep := replay{}
-		line := strings.Split(scanner.Text(), ";")
+		line := strings.Split(scanner.Text(), ",")
 		rep.Tick = 0
-		rep.Frame = strings.Split(line[2], ",")
+		//TODO rep.Frame = load byte load byte from hex string
+		//rep.Frame = strings.Split(line[2], ",")
 		if line[1] == "A" {
 			replaysA = append(replaysA, rep)
 		} else if line[1] == "B" {
@@ -129,8 +129,9 @@ func GetNextAFrame(index int, uid int) ([]byte, error) {
 	if len(replaysA)-1 < index {
 		return []byte{}, errors.New("out of index")
 	}
-	rep := replaysA[index]
-	msg := rep.Frame[0] + "," + rep.Frame[1] + "," + rep.Frame[2] + "," + rep.Frame[3] + "," + rep.Frame[4] + "," + rep.Frame[5] + "," + rep.Frame[6] + "," + rep.Frame[7] + "," + strconv.Itoa(uid) + "," + rep.Frame[9] + "," + rep.Frame[10] + "," + rep.Frame[11]
+	//rep := replaysA[index]
+	var msg []byte
+	//msg := rep.Frame[0] + "," + rep.Frame[1] + "," + rep.Frame[2] + "," + rep.Frame[3] + "," + rep.Frame[4] + "," + rep.Frame[5] + "," + rep.Frame[6] + "," + rep.Frame[7] + "," + strconv.Itoa(uid) + "," + rep.Frame[9] + "," + rep.Frame[10] + "," + rep.Frame[11]
 	return []byte(msg), nil
 }
 
@@ -138,8 +139,9 @@ func GetNextBFrame(index int, uid int) ([]byte, error) {
 	if len(replaysB)-1 < index {
 		return []byte{}, errors.New("out of index")
 	}
-	rep := replaysB[index]
-	msg := rep.Frame[0] + "," + rep.Frame[1] + "," + rep.Frame[2] + "," + rep.Frame[3] + "," + rep.Frame[4] + "," + rep.Frame[5] + "," + rep.Frame[6] + "," + rep.Frame[7] + "," + strconv.Itoa(uid) + "," + rep.Frame[9] + "," + rep.Frame[10] + "," + rep.Frame[11]
+	//rep := replaysB[index]
+	var msg []byte
+	//msg := rep.Frame[0] + "," + rep.Frame[1] + "," + rep.Frame[2] + "," + rep.Frame[3] + "," + rep.Frame[4] + "," + rep.Frame[5] + "," + rep.Frame[6] + "," + rep.Frame[7] + "," + strconv.Itoa(uid) + "," + rep.Frame[9] + "," + rep.Frame[10] + "," + rep.Frame[11]
 	return []byte(msg), nil
 }
 

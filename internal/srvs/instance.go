@@ -39,7 +39,7 @@ type OpenRelay struct {
 	ListenIpv4     string
 	ListenIpv6     string
 	ListenMode     int
-	LogLevel       int
+	LogLevel       defs.LogLevel
 	LogDir         string
 	RecMode        int
 	RepMode        bool
@@ -88,7 +88,7 @@ func NewOpenRelay(eHost string, ePort string,
                    ListenIpv4: listenIpv4,
                    ListenIpv6: listenIpv6,
                    ListenMode: listenMode,
-                   LogLevel: logLevel,
+                   LogLevel: defs.LogLevel(logLevel),
                    LogDir: logDir,
                    RecMode: recMode,
                    RepMode: repMode,

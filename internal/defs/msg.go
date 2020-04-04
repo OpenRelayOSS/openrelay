@@ -96,6 +96,13 @@ const (
 	BLOCK_ROOM_AND_QUEUE_MAX        // Economy join retry
 )
 
+type ABLoop string
+
+const (
+	ALoop ABLoop = "A"
+	BLoop ABLoop = "B"
+)
+
 //16byte/128bit
 type Header struct {
 	Ver         byte
@@ -137,7 +144,9 @@ type RoomInstance struct {
 	LastUid       PlayerId
 	MasterUid     PlayerId
 	MasterUidNeed bool
-	EnableBflag   bool
+	Log	      *Logger
+	Rec	      *Recorder
+	ABLoop        ABLoop
 }
 
 type RoomResponse struct {

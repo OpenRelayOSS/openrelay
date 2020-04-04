@@ -16,6 +16,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"flag"
@@ -95,11 +96,18 @@ func main() {
                                  listenMode, logLevel, logDir,
                                  recMode, repMode,
                                  hbTimeout, joinTimeout)
-	o.RelayInitialize()
+	err := o.ServiceInit()
+	if err != nil {
+		fmt.Println("RelayInit error", err.Error());
+		os.Exit(1)
+	}
+	defer o.ServiceClose()
+
 	go o.ConsoleServ()
 	go o.EntryServ()
 
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
+
 }

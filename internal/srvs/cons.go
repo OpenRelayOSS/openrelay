@@ -16,33 +16,22 @@
 package srvs
 
 import (
-        "log"
         "net"
         "runtime"
         "time"
+	"openrelay/internal/defs"
 )
-
-func (o *OpenRelay) SetBLoopCommand(roomId string) {
-	relay, exist := o.RelayQueue[roomId]
-	if exist {
-		log.Println("start b loop " + roomId + " failed.")
-		log.Println("roomId not found.")
-		return
-	}
-	log.Println("start b loop " + roomId)
-	relay.EnableBflag = true
-}
 
 func (o *OpenRelay) ConsoleServ() {
 	listen, err := net.Listen("tcp", ":"+o.AdminPort)
 	if err != nil {
-		log.Fatal("tcp://" + o.AdminHost + ":" + o.AdminPort + " listen failed.")
+		log.Println(defs.ERRORONLY, "tcp://" + o.AdminHost + ":" + o.AdminPort + " listen failed.")
 	}
 	for {
 		conn, err := listen.Accept()
 		defer conn.Close()
 		if err != nil {
-			log.Fatal("connection accept failed.")
+			log.Println(defs.ERRORONLY, "connection accept failed.")
 		}
 		buf := make([]byte, 1024)
 		go func() {
@@ -61,3 +50,15 @@ func (o *OpenRelay) ConsoleServ() {
 		}()
 	}
 }
+
+func (o *OpenRelay) SetBLoopCommand(roomId string) {
+	relay, exist := o.RelayQueue[roomId]
+	if exist {
+		log.Println(defs.INFO, "start b loop " + roomId + " failed.")
+		log.Println(defs.INFO, "roomId not found.")
+		return
+	}
+	log.Println(defs.INFO, "start b loop " + roomId)
+	relay.ABLoop = defs.BLoop
+}
+

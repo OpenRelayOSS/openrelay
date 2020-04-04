@@ -20,15 +20,6 @@ import (
 	"math/rand"
 )
 
-const (
-	NONE = iota
-	ERRORONLY
-	INFO
-	VERBOSE
-	VVERBOSE
-)
-var LogLevel int
-
 type PlayerId uint16
 type ObjectId uint16
 
