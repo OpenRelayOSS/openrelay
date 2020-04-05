@@ -27,6 +27,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"fmt"
 	"openrelay/internal/defs"
 //	"github.com/pion/dtls/examples/util"
 )
@@ -86,6 +87,43 @@ func (o *OpenRelay) ServiceInit() error {
                 o.RoomQueue[roomIdStr] = &room
                 o.RelayQueue[roomIdStr] = &relayInstance
         }
+	fmt.Printf(`
+               
+               
+                                       .
+                                     .g|
+                                   .MMMMNga-..
+                                 .MMMMMMMMMMMMMN,.
+                               .MMMMMMMMMMMMMMMMMN,
+                             .MMMMMMMMMMMMMMMMMMMMMb
+                           .dMMMMMMM"     'YHMMMMMMMp
+                          .dMMMMM'            VMMMMMN
+                          jMMMM^               VMMMMN
+                         .MMM#                  MMMM#
+                         |MMM                   MMMMF
+                         |MMF                   MMME
+                         'MMF                  .MME'
+                          !MN                 .MMF
+                           TMb              .jMN'
+                            'TN,          .dM!'
+                              '"^Tv==vqgMEF'
+                                       T'
+                                       '
+               
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+     O p e n R e l a y
+
+    realtime relay messaging server.
+
+    Version %s
+    Build Hash %s
+_______________________________________________________________________________ 
+
+
+`, defs.Version, defs.Shorthash)
         for _, id := range o.HotRoomQueue {
                 idStr := string(id[:])
                 o.Clean(o.RelayQueue[idStr], o.RoomQueue[idStr].Id)

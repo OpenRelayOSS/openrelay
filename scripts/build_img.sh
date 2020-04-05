@@ -27,8 +27,8 @@ ENTRY_POINT_MAIN=${REPO_ROOT_PATH}/cmd/openrelay/main.go
 ENTRY_POINT_CLIENT=${REPO_ROOT_PATH}/cmd/openrelay-client/replay.go
 GOCC=go
 GOXC=gox
-GIT_COMMIT=$(git rev-parse HEAD)
-LD_FLAGS="-X main.GitCommit=${GIT_COMMIT} $LD_FLAGS"
+GIT_COMMIT=$(git rev-parse --short HEAD)
+LD_FLAGS="-X openrelay/internal/defs.Version=${IMAGE_VERSION}.${IMAGE_RELEASENO} -X openrelay/internal/defs.Shorthash=${GIT_COMMIT} ${LD_FLAGS}"
 export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 SOURCES_PATH=${REPO_ROOT_PATH}/build/rpms/SOURCES
 ORIGIN_SOURCES_PATH=${REPO_ROOT_PATH}/build/rpms/SOURCES/${IMAGE_FULLNAME}.tar.gz
@@ -45,7 +45,7 @@ RPMBUILD_RPMS_PATH=${HOME}/${RPMBUILD}/RPMS/${IMAGE_ARCH}/
 #XC_EXCLUDE_OSARCH="!darwin/arm !darwin/386"
 
 if [[ -n "${OR_RELEASE}" ]]; then
-    LD_FLAGS="-s -w"
+    LD_FLAGS="-s -w ${LD_FLAGS}"
 fi
 
 # clean directories
@@ -60,10 +60,10 @@ rm -rf ${HOME}/${RPMBUILD}/RPMS/${IMAGE_ARCH}
 
 # preprocess here.
 
-echo ${GOCC} build -o ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_MAIN} -ldflags \"$LD_FLAGS\" ${ENTRY_POINT_MAIN}
-${GOCC} build -o ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_MAIN} -ldflags "$LD_FLAGS" ${ENTRY_POINT_MAIN}
-echo ${GOCC} build -o ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_CLIENT} -ldflags \"$LD_FLAGS\" ${ENTRY_POINT_CLIENT}
-${GOCC} build -o ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_CLIENT} -ldflags "$LD_FLAGS" ${ENTRY_POINT_CLIENT}
+echo ${GOCC} build -o ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_MAIN} -ldflags \"${LD_FLAGS}\" ${ENTRY_POINT_MAIN}
+${GOCC} build -o ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_MAIN} -ldflags "${LD_FLAGS}" ${ENTRY_POINT_MAIN}
+echo ${GOCC} build -o ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_CLIENT} -ldflags \"${LD_FLAGS}\" ${ENTRY_POINT_CLIENT}
+${GOCC} build -o ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_CLIENT} -ldflags "${LD_FLAGS}" ${ENTRY_POINT_CLIENT}
 
 mkdir -p ${SOURCES_PATH}/${IMAGE_FULLNAME}
 cp ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_MAIN} ${SOURCES_PATH}/${IMAGE_FULLNAME}/

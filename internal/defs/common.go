@@ -28,6 +28,10 @@ const UA_NATIVE_CDK = "Native-CDK"
 const UA_UNITY_CDK = "Unity-CDK"
 const UA_UE4_CDK = "UE4-CDK"
 
+// version.
+var Version string
+var Shorthash string
+
 // require cdk version.
 const REQUIRE_NATIVE_CDK_VERSION = "0.9.8"
 const REQUIRE_UNITY_CDK_VERSION = "0.9.8"
