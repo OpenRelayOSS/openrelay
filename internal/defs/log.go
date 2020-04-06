@@ -41,6 +41,7 @@ const (
 type Logger struct {
 	logger    *log.Logger
 	logVolume LogLevel
+	prefix string
 	file *os.File
 }
 
@@ -56,23 +57,42 @@ func NewLogger(lv LogLevel, dir string, filename string) (*Logger, error) {
 		return nil, err
 	}
 	logger.SetOutput(io.MultiWriter(file, os.Stdout))
-	return &Logger{logger, lv, file}, nil
+	return &Logger{logger, lv, "", file}, nil
 }
 
-func (o *Logger) SetPrefix(prefix string) {
-	o.logger.SetPrefix(prefix)
+func (o *Logger) SetPrefix(p string) {
+	o.prefix = p
 }
 
 func (o *Logger) Printf(lv LogLevel, format string, v ...interface{}) {
 	if lv <= o.logVolume {
-		o.logger.Output(callDepth, fmt.Sprintf(format, v...))
+		o.logger.Output(callDepth, o.prefix + levelToStr(lv) + fmt.Sprintf(format, v...))
 	}
 }
 
 func (o *Logger) Println(lv LogLevel, v ...interface{}) {
 	if lv <= o.logVolume {
-		o.logger.Output(callDepth, fmt.Sprintln(v...))
+		o.logger.Output(callDepth, o.prefix + levelToStr(lv) + fmt.Sprintln(v...))
 	}
+}
+
+func levelToStr(lv LogLevel) string {
+	lvStr := ""
+	switch lv {
+		case NONE:
+			lvStr = "[NONE] "
+		case ERRORONLY:
+			lvStr = "[ERRORONLY] "
+		case INFO:
+			lvStr = "[INFO] "
+		case VERBOSE:
+			lvStr = "[VERBOSE] "
+		case VVERBOSE:
+			lvStr = "[VVERBOSE] "
+		default:
+			lvStr = "[NONE] "
+	}
+	return lvStr
 }
 
 func (o *Logger) Rotate() {
