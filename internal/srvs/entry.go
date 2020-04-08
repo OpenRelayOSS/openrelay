@@ -16,16 +16,16 @@
 package srvs
 
 import (
-        "bytes"
-        "encoding/binary"
-        "encoding/hex"
-        "io"
-        "net"
-        "net/http"
-        "strconv"
-        "strings"
-        "time"
+	"bytes"
+	"encoding/binary"
+	"encoding/hex"
+	"io"
+	"net"
+	"net/http"
 	"openrelay/internal/defs"
+	"strconv"
+	"strings"
+	"time"
 )
 
 func (o *OpenRelay) EntryServ() {
@@ -292,7 +292,9 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 	joinProcessQueue := o.JoinAllProcessQueue[roomIdStr]
 	joinTimeoutQueue := o.JoinAllTimeoutQueue[roomIdStr]
 	joinProcessQueueLen := 0
-	if (joinProcessQueue.Seed != "") { joinProcessQueueLen = 1 }
+	if joinProcessQueue.Seed != "" {
+		joinProcessQueueLen = 1
+	}
 	if len(relay.Uids) >= int(room.Capacity) && room.QueuingPolicy == defs.BLOCK_ROOM_MAX {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("OK " + requestName + " " + defs.GuidFormatString(roomId) + " " + strconv.Itoa(int(room.Capacity))))
@@ -327,21 +329,21 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 	hexJoinSeed := hex.EncodeToString(joinSeed)
 
 	if joinProcessQueue.Timestamp+int64(o.JoinTimeout) < time.Now().Unix() {
-		o.JoinAllProcessQueue[roomIdStr] = defs.RoomJoinRequest{Seed:"", Timestamp:0}
+		o.JoinAllProcessQueue[roomIdStr] = defs.RoomJoinRequest{Seed: "", Timestamp: 0}
 		o.JoinAllTimeoutQueue[roomIdStr] = append(o.JoinAllTimeoutQueue[roomIdStr], joinProcessQueue)
 	}
 	if len(joinTimeoutQueue) > 0 {
 		var needTimeoutResponse bool
 		for _, request := range joinTimeoutQueue {
-		if request.Seed == hexJoinSeed  {
-			needTimeoutResponse = true
-		} 
+			if request.Seed == hexJoinSeed {
+				needTimeoutResponse = true
+			}
 		}
-		joinTimeoutQueue := make([]defs.RoomJoinRequest,0)
+		joinTimeoutQueue := make([]defs.RoomJoinRequest, 0)
 		o.JoinAllTimeoutQueue[roomIdStr] = joinTimeoutQueue
 		if needTimeoutResponse {
-		w.WriteHeader(http.StatusRequestTimeout)
-		return
+			w.WriteHeader(http.StatusRequestTimeout)
+			return
 		}
 	}
 
@@ -596,7 +598,7 @@ func (o *OpenRelay) JoinPrepareComplete(w http.ResponseWriter, r *http.Request) 
 	joinProcessQueue := o.JoinAllProcessQueue[roomIdStr]
 	hexJoinSeed := hex.EncodeToString(joinSeed)
 	if joinProcessQueue.Seed == hexJoinSeed {
-		joinProcessQueue := defs.RoomJoinRequest{Seed:"", Timestamp:0}
+		joinProcessQueue := defs.RoomJoinRequest{Seed: "", Timestamp: 0}
 		o.JoinAllProcessQueue[roomIdStr] = joinProcessQueue
 		w.WriteHeader(http.StatusOK)
 		return

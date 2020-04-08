@@ -44,16 +44,16 @@ const PropKeyGenericPrefix = "OR_SHARE_PROP_"
 const PropKeyPlayerPrefix = "OR_PLAYER_PROP_"
 
 func NewGuid() ([16]byte, error) {
-        uuid := [16]byte{}
-        _, err := rand.Read(uuid[:])
-        if err != nil {
-                return uuid, err
-        }
-        return uuid, nil
+	uuid := [16]byte{}
+	_, err := rand.Read(uuid[:])
+	if err != nil {
+		return uuid, err
+	}
+	return uuid, nil
 }
 
 func GuidFormatString(guid [16]byte) string {
-        return fmt.Sprintf("%x-%x-%x-%x-%x", guid[0:4], guid[4:6], guid[6:8], guid[8:10], guid[10:])
+	return fmt.Sprintf("%x-%x-%x-%x-%x", guid[0:4], guid[4:6], guid[6:8], guid[8:10], guid[10:])
 }
 
 // TODO implement

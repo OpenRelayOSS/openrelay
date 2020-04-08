@@ -16,98 +16,98 @@
 package srvs
 
 import (
-        crand "crypto/rand"
-        "math"
-        "math/big"
-        "math/rand"
 	"bytes"
+	crand "crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"fmt"
 	"github.com/zeromq/goczmq"
+	"math"
+	"math/big"
+	"math/rand"
+	"openrelay/internal/defs"
 	"strconv"
 	"strings"
 	"time"
-	"fmt"
-	"openrelay/internal/defs"
-//	"github.com/pion/dtls/examples/util"
+	//	"github.com/pion/dtls/examples/util"
 )
 
 var log *defs.Logger
 
 func (o *OpenRelay) ServiceInit() error {
-        var err error
-	log, err = defs.NewLogger(o.LogLevel, o.LogDir, defs.ServiceLogFilePrefix + defs.FileSuffix)
+	var err error
+	log, err = defs.NewLogger(o.LogLevel, o.LogDir, defs.ServiceLogFilePrefix+defs.FileSuffix, true)
 	if err != nil {
 		return err
 	}
-        seed, _ := crand.Int(crand.Reader, big.NewInt(math.MaxInt64)) // TODO mt19937
-        rand.Seed(seed.Int64())
-        // check stl enable but didn't set
-        stfDealPortArray := strings.Split(o.StfDealPorts, ",")
-        stfSubPortArray := strings.Split(o.StfSubPorts, ",")
-        portCount := len(stfDealPortArray)
-        for index := 0; index < portCount; index++ {
-                // check port valid
-                // check port count
-                // check port conflict
-                room := defs.RoomParameter{}
-                room.ListenMode = byte(o.ListenMode)
-                room.Id, err = defs.NewGuid()
-                if err != nil {
-                        log.Println(defs.ERRORONLY, "guid cannot create, initialize faild. ", err)
-			return err
-                }
-                roomIdStr := string(room.Id[:])
-		relayLog, err := defs.NewLogger(o.LogLevel, o.LogDir, defs.RelayLogFilePrefix + "-" + strconv.Itoa(index) + defs.FileSuffix)
+	seed, _ := crand.Int(crand.Reader, big.NewInt(math.MaxInt64)) // TODO mt19937
+	rand.Seed(seed.Int64())
+	// check stl enable but didn't set
+	stfDealPortArray := strings.Split(o.StfDealPorts, ",")
+	stfSubPortArray := strings.Split(o.StfSubPorts, ",")
+	portCount := len(stfDealPortArray)
+	for index := 0; index < portCount; index++ {
+		// check port valid
+		// check port count
+		// check port conflict
+		room := defs.RoomParameter{}
+		room.ListenMode = byte(o.ListenMode)
+		room.Id, err = defs.NewGuid()
 		if err != nil {
-                        log.Println(defs.ERRORONLY, "relay log initialize faild. ", err)
+			log.Println(defs.ERRORONLY, "guid cannot create, initialize faild. ", err)
 			return err
 		}
-		rec, err := defs.NewRecorder(o.LogDir, defs.RelayRecFilePrefix + defs.FileSuffix)
+		roomIdStr := string(room.Id[:])
+		relayLog, err := defs.NewLogger(o.LogLevel, o.LogDir, defs.RelayLogFilePrefix+"-"+strconv.Itoa(index)+defs.FileSuffix, false)
 		if err != nil {
-                        log.Println(defs.ERRORONLY, "relay rec initialize faild. ", err)
+			log.Println(defs.ERRORONLY, "relay log initialize faild. ", err)
 			return err
 		}
-                relayInstance := defs.RoomInstance{Log: relayLog, Rec: rec, ABLoop: defs.ALoop}
-                var port int
-                port, err = strconv.Atoi(stfDealPortArray[index])
-                if err != nil {
-                        log.Println(defs.ERRORONLY, "invalid port, initialize faild. ", err)
+		rec, err := defs.NewRecorder(o.LogDir, defs.RelayRecFilePrefix+defs.FileSuffix)
+		if err != nil {
+			log.Println(defs.ERRORONLY, "relay rec initialize faild. ", err)
 			return err
-                }
-                room.StfDealPort = uint16(port)
-                port, err = strconv.Atoi(stfSubPortArray[index])
-                if err != nil {
-                        log.Println(defs.ERRORONLY, "invalid port, initialize faild. ", err)
+		}
+		relayInstance := defs.RoomInstance{Log: relayLog, Rec: rec, ABLoop: defs.ALoop}
+		var port int
+		port, err = strconv.Atoi(stfDealPortArray[index])
+		if err != nil {
+			log.Println(defs.ERRORONLY, "invalid port, initialize faild. ", err)
 			return err
-                }
-                room.StfSubPort = uint16(port)
-                room.UseStateless = false
-                o.HotRoomQueue = append(o.HotRoomQueue, room.Id)
-                o.RoomQueue[roomIdStr] = &room
-                o.RelayQueue[roomIdStr] = &relayInstance
-        }
+		}
+		room.StfDealPort = uint16(port)
+		port, err = strconv.Atoi(stfSubPortArray[index])
+		if err != nil {
+			log.Println(defs.ERRORONLY, "invalid port, initialize faild. ", err)
+			return err
+		}
+		room.StfSubPort = uint16(port)
+		room.UseStateless = false
+		o.HotRoomQueue = append(o.HotRoomQueue, room.Id)
+		o.RoomQueue[roomIdStr] = &room
+		o.RelayQueue[roomIdStr] = &relayInstance
+	}
 	fmt.Printf(`
                
                
                                        .
                                      .g|
-                                   .MMMMNga-..
+                                   .MMMMMNqa=.
                                  .MMMMMMMMMMMMMN,.
                                .MMMMMMMMMMMMMMMMMN,
                              .MMMMMMMMMMMMMMMMMMMMMb
-                           .dMMMMMMM"     'YHMMMMMMMp
-                          .dMMMMM'            VMMMMMN
-                          jMMMM^               VMMMMN
-                         .MMM#                  MMMM#
-                         |MMM                   MMMMF
-                         |MMF                   MMME
-                         'MMF                  .MME'
+                           .dMMMMMMF"'    "YHMMMMMMMa
+                          .dMMMMM'           "VMMMMMN
+                          jMMMM"               VMMMMN
+                         .MMMM'                 MMMMN
+                         |MMM'                  MMMMF
+                         |MME                   MMME'
+                         'MME                  .MMY'
                           !MN                 .MMF
-                           TMb              .jMN'
-                            'TN,          .dM!'
-                              '"^Tv==vqgMEF'
-                                       T'
+                           TMb              .jMN"
+                            'TN,          .dMF"
+                              '^T$qavv=gNEF'
+                                       |"
                                        '
                
 
@@ -124,14 +124,14 @@ _______________________________________________________________________________
 
 
 `, defs.Version, defs.Shorthash)
-        for _, id := range o.HotRoomQueue {
-                idStr := string(id[:])
-                o.Clean(o.RelayQueue[idStr], o.RoomQueue[idStr].Id)
-                go o.RelayServ(o.RoomQueue[idStr], o.RelayQueue[idStr])
-                go o.Heatbeat(o.RelayQueue[idStr], id)
-        }
-        log.Printf(defs.INFO, "available room :%d", len(o.HotRoomQueue))
-        log.Printf(defs.INFO, "initialize ok")
+	for _, id := range o.HotRoomQueue {
+		idStr := string(id[:])
+		o.Clean(o.RelayQueue[idStr], o.RoomQueue[idStr].Id)
+		go o.RelayServ(o.RoomQueue[idStr], o.RelayQueue[idStr])
+		go o.Heatbeat(o.RelayQueue[idStr], id)
+	}
+	log.Printf(defs.INFO, "available room :%d", len(o.HotRoomQueue))
+	log.Printf(defs.INFO, "initialize ok")
 	return nil
 }
 
@@ -160,7 +160,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 	joinPollingQueue = make([][]byte, 0)
 	o.JoinAllPollingQueue[roomIdStr] = joinPollingQueue
 
-	relay.Log.SetPrefix("["+defs.GuidFormatString(room.Id)+ "] ")
+	relay.Log.SetPrefix("[" + defs.GuidFormatString(room.Id) + "] ")
 
 	//addr := &net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: int(room.StlDealPort)}
 	//config := &dtls.Config{
@@ -197,9 +197,9 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 
 	relay.Router, err = goczmq.NewRouter(o.StfDealProto + "://" + o.StfDealHost + ":" + strconv.Itoa(int(room.StfDealPort)))
 	if err != nil {
-		relay.Log.Printf(defs.ERRORONLY, "fail roomId " + defs.GuidFormatString(room.Id))
+		relay.Log.Printf(defs.ERRORONLY, "fail roomId "+defs.GuidFormatString(room.Id))
 		//relay.Log.Println(defs.ERRORONLY, "relay.Router create failed. "+o.StfDealProto+"://"+o.StfDealHost+":"+strconv.Itoa(int(room.StfDealPort)), err)
-		relay.Log.Printf(defs.ERRORONLY, "relay.Router create failed. " + o.StfDealProto + "://" + o.StfDealHost + ":" + strconv.Itoa(int(room.StfDealPort)) + err.Error())
+		relay.Log.Printf(defs.ERRORONLY, "relay.Router create failed. "+o.StfDealProto+"://"+o.StfDealHost+":"+strconv.Itoa(int(room.StfDealPort))+err.Error())
 		return
 	}
 	defer relay.Router.Destroy()
@@ -207,7 +207,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 	relay.Pub, err = goczmq.NewPub(o.StfSubProto + "://" + o.StfSubHost + ":" + strconv.Itoa(int(room.StfSubPort)))
 	if err != nil {
 		//relay.Log.Println(defs.ERRORONLY, "relay.Pub create failed. "+o.StfSubProto+"://"+o.StfSubHost+":"+strconv.Itoa(int(room.StfSubPort)), err)
-		relay.Log.Printf(defs.ERRORONLY, "relay.Pub create failed. " + o.StfSubProto + "://" + o.StfSubHost + ":" + strconv.Itoa(int(room.StfSubPort)) + err.Error())
+		relay.Log.Printf(defs.ERRORONLY, "relay.Pub create failed. "+o.StfSubProto+"://"+o.StfSubHost+":"+strconv.Itoa(int(room.StfSubPort))+err.Error())
 		return
 	}
 	defer relay.Pub.Destroy()
@@ -850,19 +850,19 @@ func (o *OpenRelay) Clean(relay *defs.RoomInstance, roomId [16]byte) {
 	relay.MasterUid = 0
 	relay.MasterUidNeed = true
 	relay.ABLoop = defs.ALoop
-	o.JoinAllProcessQueue[roomIdStr] = defs.RoomJoinRequest{Seed:"", Timestamp:0}
+	o.JoinAllProcessQueue[roomIdStr] = defs.RoomJoinRequest{Seed: "", Timestamp: 0}
 
 	joinPollingQueue := make([][]byte, 0)
 	o.JoinAllPollingQueue[roomIdStr] = joinPollingQueue
 
 	// restart here. relay, hbckeck
 
-//	o.HotRoomQueue = append(o.HotRoomQueue, roomId)
+	//	o.HotRoomQueue = append(o.HotRoomQueue, roomId)
 	relay.Log.Rotate()
 	relay.Log.Printf(defs.INFO, "cleaning room ok, id:%s", defs.GuidFormatString(roomId))
 }
 
-func  (o *OpenRelay) Heatbeat(relay *defs.RoomInstance, roomId [16]byte) {
+func (o *OpenRelay) Heatbeat(relay *defs.RoomInstance, roomId [16]byte) {
 	var err error
 
 	interval := time.Duration(500)

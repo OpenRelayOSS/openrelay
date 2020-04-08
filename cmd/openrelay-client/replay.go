@@ -179,7 +179,7 @@ func Send(cli *client) {
 		}
 		if logLevel > 0 {
 			log.Printf("<- %s\n", string(frame))
-			log.Printf("# id:%d A:%d B:%d\n",cli.Id, cli.PosA, cli.PosB)
+			log.Printf("# id:%d A:%d B:%d\n", cli.Id, cli.PosA, cli.PosB)
 		}
 		time.Sleep(time.Duration(100) * time.Millisecond)
 		runtime.Gosched()

@@ -16,16 +16,16 @@
 package srvs
 
 import (
-        "net"
-        "runtime"
-        "time"
+	"net"
 	"openrelay/internal/defs"
+	"runtime"
+	"time"
 )
 
 func (o *OpenRelay) ConsoleServ() {
 	listen, err := net.Listen("tcp", ":"+o.AdminPort)
 	if err != nil {
-		log.Println(defs.ERRORONLY, "tcp://" + o.AdminHost + ":" + o.AdminPort + " listen failed.")
+		log.Println(defs.ERRORONLY, "tcp://"+o.AdminHost+":"+o.AdminPort+" listen failed.")
 	}
 	for {
 		conn, err := listen.Accept()
@@ -41,6 +41,12 @@ func (o *OpenRelay) ConsoleServ() {
 				} else if "setb\r\n" == string(buf[:n]) {
 					o.SetBLoopCommand("TODO set room Id here")
 					conn.Write([]byte("start b loop\r\n"))
+				} else if "mute\r\n" == string(buf[:n]) {
+					o.SetMuteCommand("TODO set room Id here")
+					conn.Write([]byte("start b loop\r\n"))
+				} else if "unmute\r\n" == string(buf[:n]) {
+					o.SetUnmuteCommand("TODO set room Id here")
+					conn.Write([]byte("start b loop\r\n"))
 				} else {
 					conn.Write([]byte("invalid command >" + string(buf[:n]) + "< "))
 				}
@@ -54,11 +60,32 @@ func (o *OpenRelay) ConsoleServ() {
 func (o *OpenRelay) SetBLoopCommand(roomId string) {
 	relay, exist := o.RelayQueue[roomId]
 	if exist {
-		log.Println(defs.INFO, "start b loop " + roomId + " failed.")
+		log.Println(defs.INFO, "start b loop "+roomId+" failed.")
 		log.Println(defs.INFO, "roomId not found.")
 		return
 	}
-	log.Println(defs.INFO, "start b loop " + roomId)
+	log.Println(defs.INFO, "start b loop "+roomId)
 	relay.ABLoop = defs.BLoop
 }
 
+func (o *OpenRelay) SetMuteCommand(roomId string) {
+	relay, exist := o.RelayQueue[roomId]
+	if exist {
+		log.Println(defs.INFO, "mute stdout "+roomId+" failed.")
+		log.Println(defs.INFO, "roomId not found.")
+		return
+	}
+	log.Println(defs.INFO, "mute stdout "+roomId)
+	relay.Log.MuteStdout()
+}
+
+func (o *OpenRelay) SetUnmuteCommand(roomId string) {
+	relay, exist := o.RelayQueue[roomId]
+	if exist {
+		log.Println(defs.INFO, "unmute stdout "+roomId+" failed.")
+		log.Println(defs.INFO, "roomId not found.")
+		return
+	}
+	log.Println(defs.INFO, "unmute stdout "+roomId)
+	relay.Log.UnmuteStdout()
+}

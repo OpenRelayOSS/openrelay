@@ -18,25 +18,26 @@ package relay
 import (
 	"fmt"
 	"net"
-	"time"
 	"runtime"
+	"time"
 )
 
 const SUBSCRIBERS_PEEK = 65535
+
 //const MSG_QUEUE_PEEK = 65535
 type SubscriberIndex uint16
 type PlayerId uint16
 
 type Client struct {
 	id   PlayerId
-        conn *net.Conn
+	conn *net.Conn
 }
 
 type Subscriber struct {
-	index  SubscriberIndex
-	prev *Subscriber
-	next *Subscriber
-	cli  *Client
+	index SubscriberIndex
+	prev  *Subscriber
+	next  *Subscriber
+	cli   *Client
 }
 
 type Lane struct {
@@ -100,12 +101,12 @@ func (s *Lane) releaseChunk(index SubscriberIndex) {
 	s.chunks[index].next = nil
 	s.chunks[index].cli = nil
 	// quick recycle
-	newAvails := []SubscriberIndex{ index }
-	newAvails = append(newAvails, s.avails...) 
+	newAvails := []SubscriberIndex{index}
+	newAvails = append(newAvails, s.avails...)
 	s.avails = newAvails // or quick recycle?
 
 	// latest recycle
-	//s.avails = append(s.avails, index) 
+	//s.avails = append(s.avails, index)
 }
 
 func (s *Lane) existsCli(cli *Client, index *SubscriberIndex) bool {
@@ -137,7 +138,7 @@ func (s *Lane) maintenanceLoop() {
 			sub.cli = addCli
 			sub.next = nil
 			sub.prev = s.outPoint
-			// acvivate 
+			// acvivate
 			s.outPoint.next = sub
 			// change point
 			s.outPoint = sub
@@ -148,7 +149,7 @@ func (s *Lane) maintenanceLoop() {
 			markCli := s.marks[0]
 			s.marks = s.marks[1:]
 			var index SubscriberIndex
-			if ! s.existsCli(markCli, &index) {
+			if !s.existsCli(markCli, &index) {
 				continue
 			}
 			// TODO set entryPoint

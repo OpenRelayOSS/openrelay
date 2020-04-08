@@ -16,11 +16,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"openrelay/internal/srvs"
 	"os"
 	"os/signal"
-	"flag"
-	"openrelay/internal/srvs"
 )
 
 var (
@@ -87,18 +87,18 @@ func param() {
 func main() {
 	param()
 	o := srvs.NewOpenRelay(entryHost, entryPort,
-                                 stfDealHost, stfDealProto, stfDealPorts,
-                                 stfSubHost, stfSubProto, stfSubPorts,
-                                 stlDealHost, stlDealProto, stlDealPorts,
-                                 stlSubHost, stlSubProto, stlSubProto,
-                                 adminHost, adminPort,
-                                 listenIpv4, listenIpv6,
-                                 listenMode, logLevel, logDir,
-                                 recMode, repMode,
-                                 hbTimeout, joinTimeout)
+		stfDealHost, stfDealProto, stfDealPorts,
+		stfSubHost, stfSubProto, stfSubPorts,
+		stlDealHost, stlDealProto, stlDealPorts,
+		stlSubHost, stlSubProto, stlSubProto,
+		adminHost, adminPort,
+		listenIpv4, listenIpv6,
+		listenMode, logLevel, logDir,
+		recMode, repMode,
+		hbTimeout, joinTimeout)
 	err := o.ServiceInit()
 	if err != nil {
-		fmt.Println("RelayInit error", err.Error());
+		fmt.Println("RelayInit error", err.Error())
 		os.Exit(1)
 	}
 	defer o.ServiceClose()

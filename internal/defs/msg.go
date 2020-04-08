@@ -16,7 +16,7 @@
 package defs
 
 import (
-        "github.com/zeromq/goczmq"
+	"github.com/zeromq/goczmq"
 )
 
 type RelayCode byte
@@ -46,12 +46,12 @@ const (
 	RELAY_STREAM
 	LOAD_PLAYER
 	// 100 - 199 Platform Dependency RelayCode
-        UNITY_CDK_RELAY = 100
-        UNITY_CDK_RELAY_LATEST = 101
-        UNITY_CDK_GET_LATEST = 102
-        UE4_CDK_RELAY = 110
-        UE4_CDK_RELAY_LATEST = 111
-        UE4_CDK_GET_LATEST = 112
+	UNITY_CDK_RELAY        = 100
+	UNITY_CDK_RELAY_LATEST = 101
+	UNITY_CDK_GET_LATEST   = 102
+	UE4_CDK_RELAY          = 110
+	UE4_CDK_RELAY_LATEST   = 111
+	UE4_CDK_GET_LATEST     = 112
 	// 200 - 255 User Define RelayCode
 )
 
@@ -144,8 +144,8 @@ type RoomInstance struct {
 	LastUid       PlayerId
 	MasterUid     PlayerId
 	MasterUidNeed bool
-	Log	      *Logger
-	Rec	      *Recorder
+	Log           *Logger
+	Rec           *Recorder
 	ABLoop        ABLoop
 }
 
@@ -170,6 +170,6 @@ type RoomResponse struct {
 }
 
 type RoomJoinRequest struct {
-	Seed string
+	Seed      string
 	Timestamp int64
 }

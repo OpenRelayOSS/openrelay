@@ -16,10 +16,10 @@
 package defs
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
-	"fmt"
 )
 
 const FileSuffix = ".log"
@@ -41,66 +41,78 @@ const (
 type Logger struct {
 	logger    *log.Logger
 	logVolume LogLevel
-	prefix string
-	file *os.File
+	prefix    string
+	file      *os.File
 }
 
 type Recorder struct {
 	recorder *log.Logger
-	file *os.File
+	file     *os.File
 }
 
-func NewLogger(lv LogLevel, dir string, filename string) (*Logger, error) {
+func NewLogger(lv LogLevel, dir string, filename string, needStdout bool) (*Logger, error) {
 	logger := log.New(os.Stdout, "", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 	file, err := os.OpenFile(dir+"/"+filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0660)
 	if err != nil {
 		return nil, err
 	}
-	logger.SetOutput(io.MultiWriter(file, os.Stdout))
+	if needStdout {
+		logger.SetOutput(io.MultiWriter(file, os.Stdout))
+	} else {
+		logger.SetOutput(file)
+	}
 	return &Logger{logger, lv, "", file}, nil
 }
 
-func (o *Logger) SetPrefix(p string) {
-	o.prefix = p
-}
-
-func (o *Logger) Printf(lv LogLevel, format string, v ...interface{}) {
-	if lv <= o.logVolume {
-		o.logger.Output(callDepth, o.prefix + levelToStr(lv) + fmt.Sprintf(format, v...))
+func (l *Logger) Printf(lv LogLevel, format string, v ...interface{}) {
+	if lv <= l.logVolume {
+		l.logger.Output(callDepth, l.prefix+levelToStr(lv)+fmt.Sprintf(format, v...))
 	}
 }
 
-func (o *Logger) Println(lv LogLevel, v ...interface{}) {
-	if lv <= o.logVolume {
-		o.logger.Output(callDepth, o.prefix + levelToStr(lv) + fmt.Sprintln(v...))
+func (l *Logger) Println(lv LogLevel, v ...interface{}) {
+	if lv <= l.logVolume {
+		l.logger.Output(callDepth, l.prefix+levelToStr(lv)+fmt.Sprintln(v...))
 	}
+}
+
+func (l *Logger) SetPrefix(p string) {
+	l.prefix = p
+}
+
+func (l *Logger) MuteStdout() {
+	l.logger.SetOutput(l.file)
+}
+
+func (l *Logger) UnmuteStdout() {
+	l.logger.SetOutput(io.MultiWriter(l.file, os.Stdout))
 }
 
 func levelToStr(lv LogLevel) string {
 	lvStr := ""
 	switch lv {
-		case NONE:
-			lvStr = "[NONE] "
-		case ERRORONLY:
-			lvStr = "[ERRORONLY] "
-		case INFO:
-			lvStr = "[INFO] "
-		case VERBOSE:
-			lvStr = "[VERBOSE] "
-		case VVERBOSE:
-			lvStr = "[VVERBOSE] "
-		default:
-			lvStr = "[NONE] "
+	case NONE:
+		lvStr = "[NONE] "
+	case ERRORONLY:
+		lvStr = "[ERRORONLY] "
+	case INFO:
+		lvStr = "[INFO] "
+	case VERBOSE:
+		lvStr = "[VERBOSE] "
+	case VVERBOSE:
+		lvStr = "[VVERBOSE] "
+	default:
+		lvStr = "[NONE] "
 	}
 	return lvStr
 }
 
-func (o *Logger) Rotate() {
+func (l *Logger) Rotate() {
 	// TODO Rotate and Truncate logic here.
 }
 
-func (o *Logger) Close() {
-	o.file.Close()
+func (l *Logger) Close() {
+	l.file.Close()
 }
 
 func NewRecorder(dir string, filename string) (*Recorder, error) {
@@ -109,16 +121,15 @@ func NewRecorder(dir string, filename string) (*Recorder, error) {
 	if err != nil {
 		return nil, err
 	}
-//	defer file.Close()
+	//	defer file.Close()
 	recorder.SetOutput(file)
 	return &Recorder{recorder, file}, nil
 }
 
-func (o *Recorder) Printf(format string, v ...interface{}) {
-	o.recorder.Printf(format, v...)
+func (r *Recorder) Printf(format string, v ...interface{}) {
+	r.recorder.Printf(format, v...)
 }
 
-func (o *Recorder) Close() {
-	o.file.Close()
+func (r *Recorder) Close() {
+	r.file.Close()
 }
-

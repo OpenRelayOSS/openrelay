@@ -44,7 +44,7 @@ RPMBUILD_RPMS_PATH=${HOME}/${RPMBUILD}/RPMS/${IMAGE_ARCH}/
 #XC_OS=${XC_OS:-linux darwin windows freebsd openbsd solaris}
 #XC_EXCLUDE_OSARCH="!darwin/arm !darwin/386"
 
-if [[ -n "${OR_RELEASE}" ]]; then
+if [[ -n "${OR_STRIP}" ]]; then
     LD_FLAGS="-s -w ${LD_FLAGS}"
 fi
 
