@@ -57,7 +57,7 @@ func (o *OpenRelay) ServiceInit() error {
 			log.Println(defs.ERRORONLY, "guid cannot create, initialize faild. ", err)
 			return err
 		}
-		roomIdStr := string(room.Id[:])
+		roomIdHexStr := defs.GuidFormatString(room.Id)
 		relayLog, err := defs.NewLogger(o.LogLevel, o.LogDir, defs.RelayLogFilePrefix+"-"+strconv.Itoa(index)+defs.FileSuffix, false)
 		if err != nil {
 			log.Println(defs.ERRORONLY, "relay log initialize faild. ", err)
@@ -84,31 +84,31 @@ func (o *OpenRelay) ServiceInit() error {
 		room.StfSubPort = uint16(port)
 		room.UseStateless = false
 		o.HotRoomQueue = append(o.HotRoomQueue, room.Id)
-		o.RoomQueue[roomIdStr] = &room
-		o.RelayQueue[roomIdStr] = &relayInstance
+		o.RoomQueue[roomIdHexStr] = &room
+		o.RelayQueue[roomIdHexStr] = &relayInstance
 	}
 	fmt.Printf(`
                
                
                                        .
-                                     .g|
+                                     .d|
                                    .MMMMMNqa=.
                                  .MMMMMMMMMMMMMN,.
                                .MMMMMMMMMMMMMMMMMN,
                              .MMMMMMMMMMMMMMMMMMMMMb
-                           .dMMMMMMF"'    "YHMMMMMMMa
-                          .dMMMMM'           "VMMMMMN
-                          jMMMM"               VMMMMN
-                         .MMMM'                 MMMMN
-                         |MMM'                  MMMMF
-                         |MME                   MMME'
-                         'MME                  .MMY'
+                            dMMMMMMF"'    "YNMMMMMMMb
+                           dMMMMM'           "VMMMMMN
+                          dMMMM"               VMMMMM
+                         ,MMMM'                 MMMMN
+                         ;MMM'                  MMMMF
+                         ;MME                   MMME'
+                         'NME                  .MMY'
                           !MN                 .MMF
-                           TMb              .jMN"
-                            'TN,          .dMF"
-                              '^T$qavv=gNEF'
+                           YMb              .jMN"
+                            "YM=_         ,dMF"
+                              '^YMgax==agNF'
                                        |"
-                                       '
+                                        
                
 
 
@@ -125,10 +125,10 @@ _______________________________________________________________________________
 
 `, defs.Version, defs.Shorthash)
 	for _, id := range o.HotRoomQueue {
-		idStr := string(id[:])
-		o.Clean(o.RelayQueue[idStr], o.RoomQueue[idStr].Id)
-		go o.RelayServ(o.RoomQueue[idStr], o.RelayQueue[idStr])
-		go o.Heatbeat(o.RelayQueue[idStr], id)
+		roomIdHexStr := defs.GuidFormatString(id)
+		o.Clean(o.RelayQueue[roomIdHexStr], o.RoomQueue[roomIdHexStr].Id)
+		go o.RelayServ(o.RoomQueue[roomIdHexStr], o.RelayQueue[roomIdHexStr])
+		go o.Heatbeat(o.RelayQueue[roomIdHexStr], id)
 	}
 	log.Printf(defs.INFO, "available room :%d", len(o.HotRoomQueue))
 	log.Printf(defs.INFO, "initialize ok")
@@ -155,12 +155,12 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 	relay.MasterUidNeed = true
 	relay.ABLoop = defs.ALoop
 
-	roomIdStr := string(room.Id[:])
-	joinPollingQueue := o.JoinAllPollingQueue[roomIdStr]
+	roomIdHexStr := defs.GuidFormatString(room.Id)
+	joinPollingQueue := o.JoinAllPollingQueue[roomIdHexStr]
 	joinPollingQueue = make([][]byte, 0)
-	o.JoinAllPollingQueue[roomIdStr] = joinPollingQueue
+	o.JoinAllPollingQueue[roomIdHexStr] = joinPollingQueue
 
-	relay.Log.SetPrefix("[" + defs.GuidFormatString(room.Id) + "] ")
+	relay.Log.SetPrefix("[" + roomIdHexStr + "] ")
 
 	//addr := &net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: int(room.StlDealPort)}
 	//config := &dtls.Config{
@@ -835,10 +835,10 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 }
 
 func (o *OpenRelay) Clean(relay *defs.RoomInstance, roomId [16]byte) {
-	roomIdStr := string(roomId[:])
-	roomName := o.ResolveRoomIds[roomIdStr]
+	roomIdHexStr := defs.GuidFormatString(roomId)
+	roomName := o.ResolveRoomIds[roomIdHexStr]
 	delete(o.ReserveRooms, roomName)
-	delete(o.ResolveRoomIds, roomIdStr)
+	delete(o.ResolveRoomIds, roomIdHexStr)
 
 	relay.MasterUidNeed = true
 	relay.Guids = make(map[string]defs.PlayerId)
@@ -850,16 +850,16 @@ func (o *OpenRelay) Clean(relay *defs.RoomInstance, roomId [16]byte) {
 	relay.MasterUid = 0
 	relay.MasterUidNeed = true
 	relay.ABLoop = defs.ALoop
-	o.JoinAllProcessQueue[roomIdStr] = defs.RoomJoinRequest{Seed: "", Timestamp: 0}
+	o.JoinAllProcessQueue[roomIdHexStr] = defs.RoomJoinRequest{Seed: "", Timestamp: 0}
 
 	joinPollingQueue := make([][]byte, 0)
-	o.JoinAllPollingQueue[roomIdStr] = joinPollingQueue
+	o.JoinAllPollingQueue[roomIdHexStr] = joinPollingQueue
 
 	// restart here. relay, hbckeck
 
 	//	o.HotRoomQueue = append(o.HotRoomQueue, roomId)
 	relay.Log.Rotate()
-	relay.Log.Printf(defs.INFO, "cleaning room ok, id:%s", defs.GuidFormatString(roomId))
+	relay.Log.Printf(defs.INFO, "cleaning room ok, id:%s", roomIdHexStr)
 }
 
 func (o *OpenRelay) Heatbeat(relay *defs.RoomInstance, roomId [16]byte) {

@@ -94,8 +94,8 @@ func (o *OpenRelay) Rooms(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, roomId := range o.ReserveRooms {
-			roomIdStr := string(roomId[:])
-			writeBuf, err = o.addRoomResponse(writeBuf, *o.RelayQueue[roomIdStr], *o.RoomQueue[roomIdStr])
+			roomIdHexStr := defs.GuidFormatString(roomId)
+			writeBuf, err = o.addRoomResponse(writeBuf, *o.RelayQueue[roomIdHexStr], *o.RoomQueue[roomIdHexStr])
 			if err != nil {
 				log.Println(defs.ERRORONLY, "binary write failed. ", err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -137,11 +137,11 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 	_, exist := o.ReserveRooms[requestName]
 	var err error
 	var roomId [16]byte
-	var roomIdStr string
+	var roomIdHexStr string
 	writeBuf := new(bytes.Buffer)
 	if exist {
 		roomId = o.ReserveRooms[requestName]
-		roomIdStr = string(roomId[:])
+		roomIdHexStr = defs.GuidFormatString(roomId)
 		writeBuf, err = o.addResponseBytes(writeBuf, defs.OPENRELAY_RESPONSE_CODE_NG_CREATE_ROOM_ALREADY_EXISTS)
 		if err != nil {
 			log.Println(defs.ERRORONLY, "binary write failed. ", err)
@@ -152,11 +152,11 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 		binary.Write(writeBuf, binary.LittleEndian, uint16(0)) // alignment
 	} else {
 		roomId = o.HotRoomQueue[0]
-		roomIdStr = string(roomId[:])
+		roomIdHexStr = defs.GuidFormatString(roomId)
 		o.HotRoomQueue = o.HotRoomQueue[1:]
 		// reserve immediately
 		o.ReserveRooms[requestName] = roomId
-		o.ResolveRoomIds[roomIdStr] = requestName
+		o.ResolveRoomIds[roomIdHexStr] = requestName
 		body := make([]byte, 2) //uint16 size
 		_, err := r.Body.Read(body)
 		if err != nil && err != io.EOF {
@@ -175,9 +175,9 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_REQUEST_READ_FAILED))
 			return
 		}
-		o.RoomQueue[roomIdStr].Name = requestName
-		o.RoomQueue[roomIdStr].Filter = ""
-		o.RoomQueue[roomIdStr].Capacity = maxPlayers
+		o.RoomQueue[roomIdHexStr].Name = requestName
+		o.RoomQueue[roomIdHexStr].Filter = ""
+		o.RoomQueue[roomIdHexStr].Capacity = maxPlayers
 
 		writeBuf, err = o.addResponseBytes(writeBuf, defs.OPENRELAY_RESPONSE_CODE_OK_ROOM_ASSGIN_AND_CREATED)
 		if err != nil {
@@ -189,7 +189,7 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 		binary.Write(writeBuf, binary.LittleEndian, uint16(0)) // alignment
 	}
 
-	writeBuf, err = o.addRoomResponse(writeBuf, *o.RelayQueue[roomIdStr], *o.RoomQueue[roomIdStr])
+	writeBuf, err = o.addRoomResponse(writeBuf, *o.RelayQueue[roomIdHexStr], *o.RoomQueue[roomIdHexStr])
 	if err != nil {
 		log.Println(defs.ERRORONLY, "binary write failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -262,9 +262,9 @@ func (o *OpenRelay) addRoomResponse(writeBuf *bytes.Buffer, relay defs.RoomInsta
 	log.Printf(defs.VERBOSE, "response room statefull subscribe port: %d", roomRes.StfSubPort)
 	log.Printf(defs.VERBOSE, "response room stateless deal port: %d", roomRes.StlDealPort)
 	log.Printf(defs.VERBOSE, "response room stateless subscribe port: %d", roomRes.StlSubPort)
-	log.Printf(defs.VERBOSE, "response room name :%s", roomRes.Name)
+	log.Printf(defs.VERBOSE, "response room name :%s", roomRes.Name[:roomRes.NameLen])
 	log.Printf(defs.VERBOSE, "response room name length :%d", roomRes.NameLen)
-	log.Printf(defs.VERBOSE, "response room filter :%s", roomRes.Filter)
+	log.Printf(defs.VERBOSE, "response room filter :%s", roomRes.Filter[:roomRes.FilterLen])
 	log.Printf(defs.VERBOSE, "response room filter length :%d", roomRes.FilterLen)
 	log.Printf(defs.VERBOSE, "response room listen mode :%d", roomRes.ListenMode)
 	log.Printf(defs.VERBOSE, "response room listen addr ipv4(origin) :%s", o.ListenIpv4)
@@ -285,12 +285,12 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 		// room not found
 		return
 	}
-	roomIdStr := string(roomId[:])
-	room, _ := o.RoomQueue[roomIdStr]
-	relay, _ := o.RelayQueue[roomIdStr]
-	joinPollingQueue := o.JoinAllPollingQueue[roomIdStr]
-	joinProcessQueue := o.JoinAllProcessQueue[roomIdStr]
-	joinTimeoutQueue := o.JoinAllTimeoutQueue[roomIdStr]
+	roomIdHexStr := defs.GuidFormatString(roomId)
+	room, _ := o.RoomQueue[roomIdHexStr]
+	relay, _ := o.RelayQueue[roomIdHexStr]
+	joinPollingQueue := o.JoinAllPollingQueue[roomIdHexStr]
+	joinProcessQueue := o.JoinAllProcessQueue[roomIdHexStr]
+	joinTimeoutQueue := o.JoinAllTimeoutQueue[roomIdHexStr]
 	joinProcessQueueLen := 0
 	if joinProcessQueue.Seed != "" {
 		joinProcessQueueLen = 1
@@ -329,8 +329,8 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 	hexJoinSeed := hex.EncodeToString(joinSeed)
 
 	if joinProcessQueue.Timestamp+int64(o.JoinTimeout) < time.Now().Unix() {
-		o.JoinAllProcessQueue[roomIdStr] = defs.RoomJoinRequest{Seed: "", Timestamp: 0}
-		o.JoinAllTimeoutQueue[roomIdStr] = append(o.JoinAllTimeoutQueue[roomIdStr], joinProcessQueue)
+		o.JoinAllProcessQueue[roomIdHexStr] = defs.RoomJoinRequest{Seed: "", Timestamp: 0}
+		o.JoinAllTimeoutQueue[roomIdHexStr] = append(o.JoinAllTimeoutQueue[roomIdHexStr], joinProcessQueue)
 	}
 	if len(joinTimeoutQueue) > 0 {
 		var needTimeoutResponse bool
@@ -340,7 +340,7 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		joinTimeoutQueue := make([]defs.RoomJoinRequest, 0)
-		o.JoinAllTimeoutQueue[roomIdStr] = joinTimeoutQueue
+		o.JoinAllTimeoutQueue[roomIdHexStr] = joinTimeoutQueue
 		if needTimeoutResponse {
 			w.WriteHeader(http.StatusRequestTimeout)
 			return
@@ -356,7 +356,7 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 			} else {
 				joinProcessQueue.Seed = hexJoinSeed
 				joinProcessQueue.Timestamp = time.Now().Unix()
-				o.JoinAllProcessQueue[roomIdStr] = joinProcessQueue
+				o.JoinAllProcessQueue[roomIdHexStr] = joinProcessQueue
 				w.WriteHeader(http.StatusOK)
 				w.Write(res)
 			}
@@ -369,9 +369,9 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 			} else {
 				joinProcessQueue.Seed = hexJoinSeed
 				joinProcessQueue.Timestamp = time.Now().Unix()
-				o.JoinAllProcessQueue[roomIdStr] = joinProcessQueue
+				o.JoinAllProcessQueue[roomIdHexStr] = joinProcessQueue
 				joinPollingQueue = joinPollingQueue[1:] //pop
-				o.JoinAllPollingQueue[roomIdStr] = joinPollingQueue
+				o.JoinAllPollingQueue[roomIdHexStr] = joinPollingQueue
 				w.WriteHeader(http.StatusOK)
 				w.Write(res)
 			}
@@ -379,7 +379,7 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 		} else {
 			if !contains(joinPollingQueue, joinSeed) {
 				joinPollingQueue = append(joinPollingQueue, joinSeed)
-				o.JoinAllPollingQueue[roomIdStr] = joinPollingQueue
+				o.JoinAllPollingQueue[roomIdHexStr] = joinPollingQueue
 			}
 			w.WriteHeader(http.StatusContinue)
 			return
@@ -388,7 +388,7 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 	} else {
 		if !contains(joinPollingQueue, joinSeed) {
 			joinPollingQueue = append(joinPollingQueue, joinSeed)
-			o.JoinAllPollingQueue[roomIdStr] = joinPollingQueue
+			o.JoinAllPollingQueue[roomIdHexStr] = joinPollingQueue
 		}
 		w.WriteHeader(http.StatusContinue)
 		return
@@ -529,8 +529,8 @@ func (o *OpenRelay) RoomProp(w http.ResponseWriter, r *http.Request) {
 	requestName := strings.Replace(r.URL.Path, "/room/prop/", "", 1)
 	var err error
 	roomId, _ := o.ReserveRooms[requestName]
-	roomIdStr := string(roomId[:])
-	relay, _ := o.RelayQueue[roomIdStr]
+	roomIdHexStr := defs.GuidFormatString(roomId)
+	relay, _ := o.RelayQueue[roomIdHexStr]
 	contentLen := uint16(len(relay.Props[defs.PropKeyLegacy]))
 	properties := relay.Props[defs.PropKeyLegacy]
 
@@ -594,12 +594,12 @@ func (o *OpenRelay) JoinPrepareComplete(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	roomIdStr := string(roomId[:])
-	joinProcessQueue := o.JoinAllProcessQueue[roomIdStr]
+	roomIdHexStr := defs.GuidFormatString(roomId)
+	joinProcessQueue := o.JoinAllProcessQueue[roomIdHexStr]
 	hexJoinSeed := hex.EncodeToString(joinSeed)
 	if joinProcessQueue.Seed == hexJoinSeed {
 		joinProcessQueue := defs.RoomJoinRequest{Seed: "", Timestamp: 0}
-		o.JoinAllProcessQueue[roomIdStr] = joinProcessQueue
+		o.JoinAllProcessQueue[roomIdHexStr] = joinProcessQueue
 		w.WriteHeader(http.StatusOK)
 		return
 	} else {
