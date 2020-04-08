@@ -17,10 +17,9 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"openrelay/internal/srvs"
 	"os"
 	"os/signal"
+	"openrelay/internal/srvs"
 )
 
 var (
@@ -96,11 +95,7 @@ func main() {
 		listenMode, logLevel, logDir,
 		recMode, repMode,
 		hbTimeout, joinTimeout)
-	err := o.ServiceInit()
-	if err != nil {
-		fmt.Println("RelayInit error", err.Error())
-		os.Exit(1)
-	}
+	o.ServiceInit()
 	defer o.ServiceClose()
 
 	go o.ConsoleServ()

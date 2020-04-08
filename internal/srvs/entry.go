@@ -46,23 +46,26 @@ func (o *OpenRelay) EntryServ() {
 		IdleTimeout:       10 * time.Second,
 		MaxHeaderBytes:    1 << 20,
 	}
-	//log.Fatal(s.ListenAndServe())
-	s.ListenAndServe()
+	log.Fatal(s.ListenAndServe())
 }
 
 func version(w http.ResponseWriter, r *http.Request) {
 	if !validateGet(w, r) {
 		return
 	}
+	log.Println(defs.VERBOSE, "version called.")
 
 	switch r.Header.Get("User-Agent") {
 	case defs.UA_UNITY_CDK:
+		log.Println(defs.VVERBOSE, "UA_UNITY_CDK")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(defs.REQUIRE_UNITY_CDK_VERSION))
 	case defs.UA_UE4_CDK:
+		log.Println(defs.VVERBOSE, "UA_UE4_CDK")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(defs.REQUIRE_UE4_CDK_VERSION))
 	case defs.UA_NATIVE_CDK:
+		log.Println(defs.VVERBOSE, "UA_NATIVE_CDK")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(defs.REQUIRE_NATIVE_CDK_VERSION))
 	default:
@@ -72,15 +75,18 @@ func version(w http.ResponseWriter, r *http.Request) {
 
 func logon(w http.ResponseWriter, r *http.Request) {
 	validatePost(w, r)
+	log.Println(defs.VERBOSE, "logon called.")
 	w.Write([]byte("OK")) //TODO sessid
 }
 
 func addLogonResponse(relay *defs.RoomInstance) ([]byte, error) {
+	log.Println(defs.VVERBOSE, "addLogonResponse called.")
 	return nil, nil
 }
 
 func (o *OpenRelay) Rooms(w http.ResponseWriter, r *http.Request) {
 	validateGet(w, r)
+	log.Println(defs.VERBOSE, "Rooms called.")
 
 	var err error
 	writeBuf := new(bytes.Buffer)
@@ -88,7 +94,7 @@ func (o *OpenRelay) Rooms(w http.ResponseWriter, r *http.Request) {
 		writeBuf, err = o.addResponseBytes(writeBuf, defs.OPENRELAY_RESPONSE_CODE_OK)
 		err = binary.Write(writeBuf, binary.LittleEndian, uint16(len(o.ReserveRooms)))
 		if err != nil {
-			log.Println(defs.ERRORONLY, "binary write failed. ", err)
+			log.Error("binary write failed. ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
 			return
@@ -97,7 +103,7 @@ func (o *OpenRelay) Rooms(w http.ResponseWriter, r *http.Request) {
 			roomIdHexStr := defs.GuidFormatString(roomId)
 			writeBuf, err = o.addRoomResponse(writeBuf, *o.RelayQueue[roomIdHexStr], *o.RoomQueue[roomIdHexStr])
 			if err != nil {
-				log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				log.Error("binary write failed. ", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
 				return
@@ -114,21 +120,26 @@ func (o *OpenRelay) Rooms(w http.ResponseWriter, r *http.Request) {
 }
 
 func (o *OpenRelay) roomsResponse(relay *defs.RoomInstance) ([]byte, error) {
+	log.Println(defs.VVERBOSE, "roomsResponse called.")
 	return nil, nil
 }
 
 func (o *OpenRelay) roomInfo(w http.ResponseWriter, r *http.Request) {
 	validateGet(w, r)
+	log.Println(defs.VERBOSE, "roomsInfo called.")
 	w.Write([]byte("OK"))
 }
 
 func (o *OpenRelay) roomInfoResponse(relay *defs.RoomInstance) ([]byte, error) {
+	log.Println(defs.VVERBOSE, "roomsInfoResponse called.")
 	return nil, nil
 }
 
 func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 	validatePost(w, r)
+	log.Println(defs.VERBOSE, "Create called.")
 	if len(o.HotRoomQueue) <= 0 {
+		log.Println(defs.NOTICE, "room capacity over.")
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_CREATE_ROOM_CAPACITY_OVER))
 		return
@@ -144,7 +155,7 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 		roomIdHexStr = defs.GuidFormatString(roomId)
 		writeBuf, err = o.addResponseBytes(writeBuf, defs.OPENRELAY_RESPONSE_CODE_NG_CREATE_ROOM_ALREADY_EXISTS)
 		if err != nil {
-			log.Println(defs.ERRORONLY, "binary write failed. ", err)
+			log.Error("binary write failed. ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
 			return
@@ -160,7 +171,7 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 		body := make([]byte, 2) //uint16 size
 		_, err := r.Body.Read(body)
 		if err != nil && err != io.EOF {
-			log.Println(defs.ERRORONLY, "polling failed. ", err)
+			log.Error("polling failed. ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_REQUEST_READ_FAILED))
 			return
@@ -170,7 +181,7 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 		var maxPlayers uint16
 		err = binary.Read(readBuf, binary.LittleEndian, &maxPlayers)
 		if err != nil {
-			log.Println(defs.ERRORONLY, "binary read failed. invalid request data", err)
+			log.Error("binary read failed. invalid request data", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_REQUEST_READ_FAILED))
 			return
@@ -181,7 +192,7 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 
 		writeBuf, err = o.addResponseBytes(writeBuf, defs.OPENRELAY_RESPONSE_CODE_OK_ROOM_ASSGIN_AND_CREATED)
 		if err != nil {
-			log.Println(defs.ERRORONLY, "binary write failed. ", err)
+			log.Error("binary write failed. ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
 			return
@@ -191,7 +202,7 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 
 	writeBuf, err = o.addRoomResponse(writeBuf, *o.RelayQueue[roomIdHexStr], *o.RoomQueue[roomIdHexStr])
 	if err != nil {
-		log.Println(defs.ERRORONLY, "binary write failed. ", err)
+		log.Error("binary write failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
 		return
@@ -201,6 +212,7 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (o *OpenRelay) getResponseBytes(code defs.ResponseCode) []byte {
+	log.Println(defs.VVERBOSE, "getResponseBytes called.")
 	writeBuf := new(bytes.Buffer)
 	binary.Write(writeBuf, binary.LittleEndian, code)      //ignore error ok.
 	binary.Write(writeBuf, binary.LittleEndian, uint16(0)) //ignore error ok.
@@ -208,6 +220,7 @@ func (o *OpenRelay) getResponseBytes(code defs.ResponseCode) []byte {
 }
 
 func (o *OpenRelay) addResponseBytes(writeBuf *bytes.Buffer, code defs.ResponseCode) (*bytes.Buffer, error) {
+	log.Println(defs.VVERBOSE, "addResponseBytes called.")
 	var err error
 	err = binary.Write(writeBuf, binary.LittleEndian, code)
 	if err != nil {
@@ -217,6 +230,7 @@ func (o *OpenRelay) addResponseBytes(writeBuf *bytes.Buffer, code defs.ResponseC
 }
 
 func (o *OpenRelay) addRoomResponse(writeBuf *bytes.Buffer, relay defs.RoomInstance, room defs.RoomParameter) (*bytes.Buffer, error) {
+	log.Println(defs.VVERBOSE, "addRoomResponse called.")
 	var err error
 	roomRes := defs.RoomResponse{}
 	roomRes.Id = room.Id
@@ -278,11 +292,12 @@ func (o *OpenRelay) addRoomResponse(writeBuf *bytes.Buffer, relay defs.RoomInsta
 
 func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 	validatePut(w, r)
+	log.Println(defs.VERBOSE, "JoinPreparePolling called.")
 	requestName := strings.Replace(r.URL.Path, "/room/join_prepare_polling/", "", 1)
 	roomId, exist := o.ReserveRooms[requestName]
 	if !exist {
+		log.Println(defs.NOTICE, "room not found.")
 		w.WriteHeader(http.StatusInternalServerError)
-		// room not found
 		return
 	}
 	roomIdHexStr := defs.GuidFormatString(roomId)
@@ -296,10 +311,12 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 		joinProcessQueueLen = 1
 	}
 	if len(relay.Uids) >= int(room.Capacity) && room.QueuingPolicy == defs.BLOCK_ROOM_MAX {
+		log.Println(defs.VERBOSE, "OK request name: %s, roomId: %s, capacity: %d",  requestName, roomIdHexStr, int(room.Capacity))
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("OK " + requestName + " " + defs.GuidFormatString(roomId) + " " + strconv.Itoa(int(room.Capacity))))
+		w.Write([]byte("OK " + requestName + " " + roomIdHexStr + " " + strconv.Itoa(int(room.Capacity))))
 		return
 	} else if len(relay.Uids)+joinProcessQueueLen+len(joinPollingQueue) >= int(room.Capacity) && room.QueuingPolicy == defs.BLOCK_ROOM_AND_QUEUE_MAX {
+		log.Println(defs.VERBOSE, "OK request name: %s, roomId: %s, capacity: %d",  requestName, roomIdHexStr, int(room.Capacity))
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("OK"))
 		return
@@ -307,14 +324,14 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 
 	length, err := strconv.Atoi(r.Header.Get("Content-Length"))
 	if err != nil {
-		log.Println(defs.ERRORONLY, "polling failed. ", err)
+		log.Error("polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	body := make([]byte, length)
 	length, err = r.Body.Read(body)
 	if err != nil && err != io.EOF {
-		log.Println(defs.ERRORONLY, "polling failed. ", err)
+		log.Error("polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -322,7 +339,7 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 
 	joinSeed, err := o.readJoinSeed(readBuf)
 	if err != nil {
-		log.Println(defs.ERRORONLY, "polling failed. ", err)
+		log.Error("polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -351,7 +368,7 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 		if len(joinPollingQueue) == 0 {
 			res, err := o.JoinPrepareResponse(relay, joinSeed)
 			if err != nil {
-				log.Println(defs.INFO, "polling failed. ", err)
+				log.Println(defs.NOTICE, "polling failed. ", err)
 				w.WriteHeader(http.StatusBadRequest)
 			} else {
 				joinProcessQueue.Seed = hexJoinSeed
@@ -364,7 +381,7 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 		} else if check := hex.EncodeToString(joinPollingQueue[0]); check == hexJoinSeed {
 			res, err := o.JoinPrepareResponse(relay, joinSeed)
 			if err != nil {
-				log.Println(defs.INFO, "polling failed. ", err)
+				log.Println(defs.NOTICE, "polling failed. ", err)
 				w.WriteHeader(http.StatusBadRequest)
 			} else {
 				joinProcessQueue.Seed = hexJoinSeed
@@ -445,6 +462,7 @@ func (o *OpenRelay) readJoinSeed(readBuf *bytes.Reader) ([]byte, error) {
 }
 
 func (o *OpenRelay) JoinPrepareResponse(relay *defs.RoomInstance, joinSeed []byte) ([]byte, error) {
+	log.Println(defs.VERBOSE, "JoinPrepareResponse called.")
 	var err error
 	writeBuf := new(bytes.Buffer)
 	relay.LastUid += 1
@@ -521,11 +539,13 @@ func (o *OpenRelay) JoinPrepareResponse(relay *defs.RoomInstance, joinSeed []byt
 			}
 		}
 	}
+	log.Println(defs.VERBOSE, "JoinPrepareResponse finished.")
 	return writeBuf.Bytes(), nil
 }
 
 func (o *OpenRelay) RoomProp(w http.ResponseWriter, r *http.Request) {
 	validateGet(w, r)
+	log.Println(defs.VERBOSE, "RoomProp called.")
 	requestName := strings.Replace(r.URL.Path, "/room/prop/", "", 1)
 	var err error
 	roomId, _ := o.ReserveRooms[requestName]
@@ -537,14 +557,14 @@ func (o *OpenRelay) RoomProp(w http.ResponseWriter, r *http.Request) {
 	writeBuf := new(bytes.Buffer)
 	writeBuf, err = o.addResponseBytes(writeBuf, defs.OPENRELAY_RESPONSE_CODE_OK)
 	if err != nil {
-		log.Println(defs.ERRORONLY, "binary write failed. ", err)
+		log.Error("binary write failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
 		return
 	}
 	err = binary.Write(writeBuf, binary.LittleEndian, contentLen)
 	if err != nil {
-		log.Println(defs.ERRORONLY, "binary write failed. ", err)
+		log.Error("binary write failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
 		return
@@ -552,7 +572,7 @@ func (o *OpenRelay) RoomProp(w http.ResponseWriter, r *http.Request) {
 
 	err = binary.Write(writeBuf, binary.LittleEndian, properties)
 	if err != nil {
-		log.Println(defs.ERRORONLY, "binary write failed. ", err)
+		log.Error("binary write failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
 		return
@@ -564,24 +584,25 @@ func (o *OpenRelay) RoomProp(w http.ResponseWriter, r *http.Request) {
 
 func (o *OpenRelay) JoinPrepareComplete(w http.ResponseWriter, r *http.Request) {
 	validatePost(w, r)
+	log.Println(defs.VERBOSE, "JoinPrepareComplete called.")
 	requestName := strings.Replace(r.URL.Path, "/room/join_prepare_complete/", "", 1)
 	roomId, exist := o.ReserveRooms[requestName]
 	if !exist {
+		log.Println(defs.NOTICE, "room not found.")
 		w.WriteHeader(http.StatusInternalServerError)
-		// room not found
 		return
 	}
 
 	length, err := strconv.Atoi(r.Header.Get("Content-Length"))
 	if err != nil {
-		log.Println(defs.ERRORONLY, "polling failed. ", err)
+		log.Error("polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	body := make([]byte, length)
 	length, err = r.Body.Read(body)
 	if err != nil && err != io.EOF {
-		log.Println(defs.ERRORONLY, "polling failed. ", err)
+		log.Error("polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -589,7 +610,7 @@ func (o *OpenRelay) JoinPrepareComplete(w http.ResponseWriter, r *http.Request) 
 
 	joinSeed, err := o.readJoinSeed(readBuf)
 	if err != nil {
-		log.Println(defs.ERRORONLY, "polling failed. ", err)
+		log.Error("polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -598,11 +619,13 @@ func (o *OpenRelay) JoinPrepareComplete(w http.ResponseWriter, r *http.Request) 
 	joinProcessQueue := o.JoinAllProcessQueue[roomIdHexStr]
 	hexJoinSeed := hex.EncodeToString(joinSeed)
 	if joinProcessQueue.Seed == hexJoinSeed {
+		log.Printf(defs.INFO, "seed is match %s == %s \n", joinProcessQueue.Seed, hexJoinSeed)
 		joinProcessQueue := defs.RoomJoinRequest{Seed: "", Timestamp: 0}
 		o.JoinAllProcessQueue[roomIdHexStr] = joinProcessQueue
 		w.WriteHeader(http.StatusOK)
 		return
 	} else {
+		log.Printf(defs.NOTICE, "seed is not match %s != %s \n", joinProcessQueue.Seed, hexJoinSeed)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -610,6 +633,7 @@ func (o *OpenRelay) JoinPrepareComplete(w http.ResponseWriter, r *http.Request) 
 
 func logoff(w http.ResponseWriter, r *http.Request) {
 	validatePost(w, r)
+	log.Println(defs.VERBOSE, "logoff called.")
 	w.Write([]byte("OK"))
 }
 

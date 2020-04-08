@@ -25,13 +25,13 @@ import (
 func (o *OpenRelay) ConsoleServ() {
 	listen, err := net.Listen("tcp", ":"+o.AdminPort)
 	if err != nil {
-		log.Println(defs.ERRORONLY, "tcp://"+o.AdminHost+":"+o.AdminPort+" listen failed.")
+		log.Panic("tcp://"+o.AdminHost+":"+o.AdminPort+" listen failed. ", err)
 	}
 	for {
 		conn, err := listen.Accept()
 		defer conn.Close()
 		if err != nil {
-			log.Println(defs.ERRORONLY, "connection accept failed.")
+			log.Panic("connection accept failed. ", err)
 		}
 		buf := make([]byte, 1024)
 		go func() {

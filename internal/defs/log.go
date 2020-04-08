@@ -20,22 +20,23 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime"
 )
 
 const FileSuffix = ".log"
 const ServiceLogFilePrefix = "service"
 const RelayLogFilePrefix = "relay"
 const RelayRecFilePrefix = "record"
-const callDepth = 2
+const stackDepth = 2
 
 type LogLevel byte
 
 const (
-	NONE LogLevel = iota
-	ERRORONLY
-	INFO
+	INFO LogLevel = iota
+	NOTICE
 	VERBOSE
 	VVERBOSE
+	NONE
 )
 
 type Logger struct {
@@ -66,14 +67,31 @@ func NewLogger(lv LogLevel, dir string, filename string, needStdout bool) (*Logg
 
 func (l *Logger) Printf(lv LogLevel, format string, v ...interface{}) {
 	if lv <= l.logVolume {
-		l.logger.Output(callDepth, l.prefix+levelToStr(lv)+fmt.Sprintf(format, v...))
+		l.logger.Output(stackDepth, l.prefix+levelToStr(lv)+fmt.Sprintf(format, v...))
 	}
 }
 
 func (l *Logger) Println(lv LogLevel, v ...interface{}) {
 	if lv <= l.logVolume {
-		l.logger.Output(callDepth, l.prefix+levelToStr(lv)+fmt.Sprintln(v...))
+		l.logger.Output(stackDepth, l.prefix+levelToStr(lv)+fmt.Sprintln(v...))
 	}
+}
+
+func (l *Logger) Error(v ...interface{}) {
+	l.logger.Output(stackDepth, l.prefix+"[ERROR] "+fmt.Sprintln(v...))
+	l.printStacktrace(stackDepth + 1)
+}
+
+func (l *Logger) Panic(v ...interface{}) {
+	l.logger.Output(stackDepth, l.prefix+"[PANIC] "+fmt.Sprintln(v...))
+	l.printStacktrace(stackDepth + 1)
+	panic(l.prefix + " CALLED PANIC.")
+}
+
+func (l *Logger) Fatal(v ...interface{}) {
+	l.logger.Output(stackDepth, l.prefix+"[FATAL] "+fmt.Sprintln(v...))
+	l.printStacktrace(stackDepth + 1)
+	os.Exit(1)
 }
 
 func (l *Logger) SetPrefix(p string) {
@@ -88,15 +106,28 @@ func (l *Logger) UnmuteStdout() {
 	l.logger.SetOutput(io.MultiWriter(l.file, os.Stdout))
 }
 
+func (l *Logger) printStacktrace(stackDepth int) {
+	stackMax := 20
+	for stack := 0; stack < stackMax; stack++ {
+		if stack < stackDepth {
+			continue
+		}
+		point, file, line, ok := runtime.Caller(stack)
+		if !ok {
+			break
+		}
+		funcName := runtime.FuncForPC(point).Name()
+		l.logger.Printf(l.prefix+"[STACKTRACE] file=%s, line=%d, func=%v\n", file, line, funcName)
+	}
+}
+
 func levelToStr(lv LogLevel) string {
 	lvStr := ""
 	switch lv {
-	case NONE:
-		lvStr = "[NONE] "
-	case ERRORONLY:
-		lvStr = "[ERRORONLY] "
 	case INFO:
 		lvStr = "[INFO] "
+	case NOTICE:
+		lvStr = "[NOTICE] "
 	case VERBOSE:
 		lvStr = "[VERBOSE] "
 	case VVERBOSE:

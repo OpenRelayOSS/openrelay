@@ -34,11 +34,11 @@ import (
 
 var log *defs.Logger
 
-func (o *OpenRelay) ServiceInit() error {
+func (o *OpenRelay) ServiceInit() {
 	var err error
 	log, err = defs.NewLogger(o.LogLevel, o.LogDir, defs.ServiceLogFilePrefix+defs.FileSuffix, true)
 	if err != nil {
-		return err
+		panic("log initialize failed.")
 	}
 	seed, _ := crand.Int(crand.Reader, big.NewInt(math.MaxInt64)) // TODO mt19937
 	rand.Seed(seed.Int64())
@@ -54,32 +54,27 @@ func (o *OpenRelay) ServiceInit() error {
 		room.ListenMode = byte(o.ListenMode)
 		room.Id, err = defs.NewGuid()
 		if err != nil {
-			log.Println(defs.ERRORONLY, "guid cannot create, initialize faild. ", err)
-			return err
+			log.Panic("guid cannot create, initialize faild. ", err)
 		}
 		roomIdHexStr := defs.GuidFormatString(room.Id)
 		relayLog, err := defs.NewLogger(o.LogLevel, o.LogDir, defs.RelayLogFilePrefix+"-"+strconv.Itoa(index)+defs.FileSuffix, false)
 		if err != nil {
-			log.Println(defs.ERRORONLY, "relay log initialize faild. ", err)
-			return err
+			log.Panic("relay log initialize faild. ", err)
 		}
 		rec, err := defs.NewRecorder(o.LogDir, defs.RelayRecFilePrefix+defs.FileSuffix)
 		if err != nil {
-			log.Println(defs.ERRORONLY, "relay rec initialize faild. ", err)
-			return err
+			log.Panic("relay rec initialize faild. ", err)
 		}
 		relayInstance := defs.RoomInstance{Log: relayLog, Rec: rec, ABLoop: defs.ALoop}
 		var port int
 		port, err = strconv.Atoi(stfDealPortArray[index])
 		if err != nil {
-			log.Println(defs.ERRORONLY, "invalid port, initialize faild. ", err)
-			return err
+			log.Panic("invalid port, initialize faild. ", err)
 		}
 		room.StfDealPort = uint16(port)
 		port, err = strconv.Atoi(stfSubPortArray[index])
 		if err != nil {
-			log.Println(defs.ERRORONLY, "invalid port, initialize faild. ", err)
-			return err
+			log.Panic("invalid port, initialize faild. ", err)
 		}
 		room.StfSubPort = uint16(port)
 		room.UseStateless = false
@@ -132,7 +127,6 @@ _______________________________________________________________________________
 	}
 	log.Printf(defs.INFO, "available room :%d", len(o.HotRoomQueue))
 	log.Printf(defs.INFO, "initialize ok")
-	return nil
 }
 
 func (o *OpenRelay) ServiceClose() {
@@ -197,18 +191,13 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 
 	relay.Router, err = goczmq.NewRouter(o.StfDealProto + "://" + o.StfDealHost + ":" + strconv.Itoa(int(room.StfDealPort)))
 	if err != nil {
-		relay.Log.Printf(defs.ERRORONLY, "fail roomId "+defs.GuidFormatString(room.Id))
-		//relay.Log.Println(defs.ERRORONLY, "relay.Router create failed. "+o.StfDealProto+"://"+o.StfDealHost+":"+strconv.Itoa(int(room.StfDealPort)), err)
-		relay.Log.Printf(defs.ERRORONLY, "relay.Router create failed. "+o.StfDealProto+"://"+o.StfDealHost+":"+strconv.Itoa(int(room.StfDealPort))+err.Error())
-		return
+		relay.Log.Panic("relay.Router create relay " + defs.GuidFormatString(room.Id) + " failed. "+o.StfDealProto+"://"+o.StfDealHost+":"+strconv.Itoa(int(room.StfDealPort)), err)
 	}
 	defer relay.Router.Destroy()
 
 	relay.Pub, err = goczmq.NewPub(o.StfSubProto + "://" + o.StfSubHost + ":" + strconv.Itoa(int(room.StfSubPort)))
 	if err != nil {
-		//relay.Log.Println(defs.ERRORONLY, "relay.Pub create failed. "+o.StfSubProto+"://"+o.StfSubHost+":"+strconv.Itoa(int(room.StfSubPort)), err)
-		relay.Log.Printf(defs.ERRORONLY, "relay.Pub create failed. "+o.StfSubProto+"://"+o.StfSubHost+":"+strconv.Itoa(int(room.StfSubPort))+err.Error())
-		return
+		relay.Log.Panic("relay.Pub create relay " + defs.GuidFormatString(room.Id) + " failed. "+o.StfSubProto+"://"+o.StfSubHost+":"+strconv.Itoa(int(room.StfSubPort)), err)
 	}
 	defer relay.Pub.Destroy()
 
@@ -216,12 +205,12 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 	for {
 		request, err := relay.Router.RecvMessage()
 		if err != nil {
-			relay.Log.Println(defs.ERRORONLY, "relay.Router recv failed. ", err)
+			relay.Log.Println(defs.NOTICE, "relay.Router recv failed. ", err)
 			continue
 		}
 		relay.Log.Printf(defs.VVERBOSE, "relay.Router received '%s' from '%v'", hex.EncodeToString(request[1]), request[0])
 		if request == nil || len(request) < 2 {
-			relay.Log.Println(defs.ERRORONLY, "invalid request.. ")
+			relay.Log.Println(defs.NOTICE, "invalid request, request is too short.")
 			continue
 		}
 
@@ -229,12 +218,12 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 		header = defs.Header{}
 		err = binary.Read(readBuf, binary.LittleEndian, &header)
 		if err != nil {
-			relay.Log.Println(defs.ERRORONLY, "binary read failed. ", err)
+			relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 			continue
 		}
 
 		if header.Ver != defs.FrameVersion {
-			relay.Log.Printf(defs.ERRORONLY, "invalid FrameVersion %d != %d", defs.FrameVersion, header.Ver)
+			relay.Log.Printf(defs.NOTICE, "invalid FrameVersion %d != %d", defs.FrameVersion, header.Ver)
 			continue
 		}
 
@@ -251,7 +240,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 		switch header.RelayCode {
 		case defs.RELAY, defs.RELAY_STREAM, defs.UNITY_CDK_RELAY, defs.UE4_CDK_RELAY:
 			if _, ok := relay.Hbs[header.SrcUid]; !ok {
-				relay.Log.Println(defs.ERRORONLY, "source uid is invalid ", header.SrcUid)
+				relay.Log.Println(defs.NOTICE, "source uid is invalid ", header.SrcUid)
 				continue
 			}
 			relay.Hbs[header.SrcUid] = time.Now().Unix()
@@ -263,7 +252,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 
 			err = relay.Pub.SendFrame(request[1], goczmq.FlagNone)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "send failed. ", err)
+				relay.Log.Println(defs.NOTICE, "send failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "-> relay %d '%s' ", header.RelayCode, hex.EncodeToString(request[1]))
@@ -274,7 +263,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 
 		case defs.JOIN:
 			if _, ok := relay.Hbs[header.SrcUid]; !ok {
-				relay.Log.Println(defs.ERRORONLY, "source uid is invalid ", header.SrcUid)
+				relay.Log.Println(defs.NOTICE, "source uid is invalid ", header.SrcUid)
 				continue
 			}
 			relay.Hbs[header.SrcUid] = time.Now().Unix()
@@ -285,7 +274,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			var seedLen uint16
 			err = binary.Read(readBuf, binary.LittleEndian, &seedLen)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary read failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "received join seedLen: '%d' ", seedLen)
@@ -293,7 +282,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			var nameLen uint16
 			err = binary.Read(readBuf, binary.LittleEndian, &nameLen)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary read failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "received join nameLen: '%d' ", nameLen)
@@ -301,7 +290,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			joinSeed := make([]byte, seedLen)
 			err = binary.Read(readBuf, binary.LittleEndian, &joinSeed)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary read failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 				continue
 			}
 
@@ -313,7 +302,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 				alignment = make([]byte, alignmentLen)
 				err = binary.Read(readBuf, binary.LittleEndian, &alignment)
 				if err != nil {
-					relay.Log.Println(defs.ERRORONLY, "binary read failed. ", err)
+					relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 					continue
 				}
 			}
@@ -321,7 +310,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			name := make([]byte, nameLen)
 			err = binary.Read(readBuf, binary.LittleEndian, &name)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary read failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 				continue
 			}
 
@@ -333,33 +322,33 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			writeBuf := new(bytes.Buffer)
 			err = binary.Write(writeBuf, binary.LittleEndian, header)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, assginUid)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, relay.MasterUid)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, seedLen)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, nameLen)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 
 			err = binary.Write(writeBuf, binary.LittleEndian, joinSeed)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			//write adjust alignment at seedLen.
@@ -368,20 +357,20 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 				alignment = make([]byte, alignmentLen)
 				err = binary.Write(writeBuf, binary.LittleEndian, alignment)
 				if err != nil {
-					relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+					relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 					continue
 				}
 			}
 
 			err = binary.Write(writeBuf, binary.LittleEndian, name)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 
 			err = relay.Pub.SendFrame(writeBuf.Bytes(), goczmq.FlagNone)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "frame send failed. ", err)
+				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "-> relay '%s' ", hex.EncodeToString(writeBuf.Bytes()))
@@ -395,12 +384,12 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			joinSeed := make([]byte, header.ContentLen)
 			err = binary.Read(readBuf, binary.LittleEndian, &joinSeed)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary read failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 				continue
 			}
 			srcUid := relay.Guids[string(joinSeed)]
 			if srcUid != header.SrcUid {
-				relay.Log.Printf(defs.ERRORONLY, "invalid srcUid %l !=  %l", srcUid, header.SrcUid)
+				relay.Log.Printf(defs.NOTICE, "invalid srcUid %l !=  %l", srcUid, header.SrcUid)
 				continue
 			}
 			delete(relay.Guids, string(joinSeed))
@@ -421,18 +410,18 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			writeBuf := new(bytes.Buffer)
 			err = binary.Write(writeBuf, binary.LittleEndian, header)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, relay.MasterUid)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 
 			err = relay.Pub.SendFrame(writeBuf.Bytes(), goczmq.FlagNone)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "frame send failed. ", err)
+				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
 				continue
 			}
 			relay.Log.Println(defs.INFO, "-> leave ", srcUid)
@@ -441,7 +430,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 		case defs.REJOIN:
 		case defs.SET_LEGACY_MAP:
 			if _, ok := relay.Hbs[header.SrcUid]; !ok {
-				relay.Log.Println(defs.ERRORONLY, "invalid srcUid: ", header.SrcUid)
+				relay.Log.Println(defs.NOTICE, "invalid srcUid: ", header.SrcUid)
 				continue
 			}
 			relay.Hbs[header.SrcUid] = time.Now().Unix()
@@ -449,7 +438,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			var keysLen uint16
 			err = binary.Read(readBuf, binary.LittleEndian, &keysLen)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary read failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "received join keysLen: '%d' ", keysLen)
@@ -457,7 +446,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			var propsLen uint16
 			err = binary.Read(readBuf, binary.LittleEndian, &propsLen)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary read failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "received join propsLen: '%d' ", propsLen)
@@ -465,7 +454,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			keysBytes := make([]byte, keysLen)
 			err = binary.Read(readBuf, binary.LittleEndian, &keysBytes)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary read failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 				continue
 			}
 
@@ -475,7 +464,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 				var alignment = make([]byte, alignmentLen)
 				err = binary.Read(readBuf, binary.LittleEndian, &alignment)
 				if err != nil {
-					relay.Log.Println(defs.ERRORONLY, "binary read failed. ", err)
+					relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 					continue
 				}
 			}
@@ -483,31 +472,31 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			properties := make([]byte, propsLen)
 			err = binary.Read(readBuf, binary.LittleEndian, &properties)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary read failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 				continue
 			}
 			relay.Props[defs.PropKeyLegacy] = properties
 			writeBuf := new(bytes.Buffer)
 			err = binary.Write(writeBuf, binary.LittleEndian, header)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 
 			err = binary.Write(writeBuf, binary.LittleEndian, keysLen)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, propsLen)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 
 			err = binary.Write(writeBuf, binary.LittleEndian, keysBytes)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 
@@ -517,26 +506,26 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 				var alignment = make([]byte, alignmentLen)
 				err = binary.Write(writeBuf, binary.LittleEndian, alignment)
 				if err != nil {
-					relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+					relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 					continue
 				}
 			}
 
 			err = binary.Write(writeBuf, binary.LittleEndian, properties)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = relay.Pub.SendFrame(writeBuf.Bytes(), goczmq.FlagNone)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "frame send failed. ", err)
+				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "set legacy map %s \n", relay.Props[defs.PropKeyLegacy])
 
 		case defs.GET_LEGACY_MAP:
 			if _, ok := relay.Hbs[header.SrcUid]; !ok {
-				relay.Log.Println(defs.ERRORONLY, "invalid srcUid: ", header.SrcUid)
+				relay.Log.Println(defs.NOTICE, "invalid srcUid: ", header.SrcUid)
 				continue
 			}
 			relay.Hbs[header.SrcUid] = time.Now().Unix()
@@ -546,17 +535,17 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			writeBuf := new(bytes.Buffer)
 			err = binary.Write(writeBuf, binary.LittleEndian, header)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, properties)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = relay.Pub.SendFrame(writeBuf.Bytes(), goczmq.FlagNone)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "frame send failed. ", err)
+				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "get legacy map %s \n", relay.Props[defs.PropKeyLegacy])
@@ -564,7 +553,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 		case defs.GET_USERS:
 		case defs.SET_MASTER:
 			if _, ok := relay.Hbs[header.SrcUid]; !ok {
-				relay.Log.Println(defs.ERRORONLY, "source uid is invalid ", header.SrcUid)
+				relay.Log.Println(defs.NOTICE, "source uid is invalid ", header.SrcUid)
 				continue
 			}
 			relay.Hbs[header.SrcUid] = time.Now().Unix()
@@ -573,25 +562,25 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			writeBuf := new(bytes.Buffer)
 			err = binary.Write(writeBuf, binary.LittleEndian, header)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, relay.MasterUid)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 
 			err = relay.Pub.SendFrame(writeBuf.Bytes(), goczmq.FlagNone)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "frame send failed. ", err)
+				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "-> relay '%s' ", hex.EncodeToString(request[1]))
 
 		case defs.GET_MASTER:
 			if _, ok := relay.Hbs[header.SrcUid]; !ok {
-				relay.Log.Println(defs.ERRORONLY, "source uid is invalid ", header.SrcUid)
+				relay.Log.Println(defs.NOTICE, "source uid is invalid ", header.SrcUid)
 				continue
 			}
 			relay.Hbs[header.SrcUid] = time.Now().Unix()
@@ -600,25 +589,25 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			writeBuf := new(bytes.Buffer)
 			err = binary.Write(writeBuf, binary.LittleEndian, header)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, relay.MasterUid)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 
 			err = relay.Pub.SendFrame(writeBuf.Bytes(), goczmq.FlagNone)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "frame send failed. ", err)
+				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "-> relay '%s' ", hex.EncodeToString(request[1]))
 
 		case defs.GET_SERVER_TIMESTAMP:
 			if _, ok := relay.Hbs[header.SrcUid]; !ok {
-				relay.Log.Println(defs.ERRORONLY, "source uid is invalid ", header.SrcUid)
+				relay.Log.Println(defs.NOTICE, "source uid is invalid ", header.SrcUid)
 				continue
 			}
 			relay.Hbs[header.SrcUid] = time.Now().Unix()
@@ -628,24 +617,24 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			writeBuf := new(bytes.Buffer)
 			err = binary.Write(writeBuf, binary.LittleEndian, header)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, timestamp)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = relay.Pub.SendFrame(writeBuf.Bytes(), goczmq.FlagNone)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "frame send failed. ", err)
+				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "-> relay '%s' ", hex.EncodeToString(request[1]))
 
 		case defs.RELAY_LATEST, defs.UNITY_CDK_RELAY_LATEST, defs.UE4_CDK_RELAY_LATEST:
 			if _, ok := relay.Hbs[header.SrcUid]; !ok {
-				relay.Log.Println(defs.ERRORONLY, "source uid is invalid ", header.SrcUid)
+				relay.Log.Println(defs.NOTICE, "source uid is invalid ", header.SrcUid)
 				continue
 			}
 			relay.Hbs[header.SrcUid] = time.Now().Unix()
@@ -656,25 +645,25 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			writeBuf := new(bytes.Buffer)
 			err = binary.Write(writeBuf, binary.LittleEndian, header)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, properties)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 
 			err = relay.Pub.SendFrame(writeBuf.Bytes(), goczmq.FlagNone)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "frame send failed. ", err)
+				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "-> relay '%s' ", hex.EncodeToString(request[1]))
 
 		case defs.GET_LATEST, defs.UNITY_CDK_GET_LATEST, defs.UE4_CDK_GET_LATEST:
 			if _, ok := relay.Hbs[header.SrcUid]; !ok {
-				relay.Log.Println(defs.ERRORONLY, "source uid is invalid ", header.SrcUid)
+				relay.Log.Println(defs.NOTICE, "source uid is invalid ", header.SrcUid)
 				continue
 			}
 			relay.Hbs[header.SrcUid] = time.Now().Unix()
@@ -682,7 +671,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			var targetUid uint16
 			err = binary.Read(readBuf, binary.LittleEndian, &targetUid)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary read failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "get latest uid:%d latest stack", targetUid)
@@ -692,25 +681,25 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			writeBuf := new(bytes.Buffer)
 			err = binary.Write(writeBuf, binary.LittleEndian, header)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, properties)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 
 			err = relay.Pub.SendFrame(writeBuf.Bytes(), goczmq.FlagNone)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "frame send failed. ", err)
+				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "-> relay '%s' ", hex.EncodeToString(request[1]))
 
 		case defs.SET_LOBBY_MAP:
 			//if _, ok := relay.Hbs[header.SrcUid]; !ok {
-			//	if o.LogLevel >= defs.ERRORONLY {relay.Log.Println(defs.ERRORONLY, "invalid srcUid: ", header.SrcUid) }
+			//	relay.Log.Println(defs.NOTICE, "invalid srcUid: ", header.SrcUid)
 			//	continue
 			//}
 			//relay.Hbs[header.SrcUid] = time.Now().Unix()
@@ -718,31 +707,31 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			properties := make([]byte, header.ContentLen)
 			err = binary.Read(readBuf, binary.LittleEndian, &properties)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary read failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 				continue
 			}
 			relay.Props[defs.PropKeyLegacyLobby] = properties
 			writeBuf := new(bytes.Buffer)
 			err = binary.Write(writeBuf, binary.LittleEndian, header)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, properties)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = relay.Pub.SendFrame(writeBuf.Bytes(), goczmq.FlagNone)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "frame send failed. ", err)
+				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "set lobby map %s \n", relay.Props[defs.PropKeyLegacyLobby])
 
 		case defs.GET_LOBBY_MAP:
 			//if _, ok := relay.Hbs[header.SrcUid]; !ok {
-			//	relay.Log.Println(defs.ERRORONLY, "invalid srcUid: ", header.SrcUid)
+			//	relay.Log.Println(defs.NOTICE, "invalid srcUid: ", header.SrcUid)
 			//	continue
 			//}
 			//relay.Hbs[header.SrcUid] = time.Now().Unix()
@@ -752,17 +741,17 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			writeBuf := new(bytes.Buffer)
 			err = binary.Write(writeBuf, binary.LittleEndian, header)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, properties)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = relay.Pub.SendFrame(writeBuf.Bytes(), goczmq.FlagNone)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "frame send failed. ", err)
+				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "get legacy map %s \n", relay.Props[defs.PropKeyLegacy])
@@ -776,7 +765,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			joinSeed := make([]byte, header.ContentLen)
 			err = binary.Read(readBuf, binary.LittleEndian, &joinSeed)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "read joinseed failed. ", err)
+				relay.Log.Println(defs.NOTICE, "read joinseed failed. ", err)
 				continue
 			}
 			assginUid := relay.LastUid
@@ -790,29 +779,29 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			writeBuf := new(bytes.Buffer)
 			err = binary.Write(writeBuf, binary.LittleEndian, header)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, assginUid)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, relay.MasterUid)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			err = binary.Write(writeBuf, binary.LittleEndian, joinedUids)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 				continue
 			}
 			relay.Hbs[relay.LastUid] = time.Now().Unix()
 
 			err = relay.Pub.SendFrame(writeBuf.Bytes(), goczmq.FlagNone)
 			if err != nil {
-				relay.Log.Println(defs.ERRORONLY, "frame send failed. ", err)
+				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "-> relay '%s' ", hex.EncodeToString(request[1]))
@@ -827,7 +816,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			relay.Log.Printf(defs.VERBOSE, "message code defs.FETCH_STACK ... %d\n", header.RelayCode)
 		case defs.CONNECT:
 		default:
-			relay.Log.Printf(defs.ERRORONLY, "invalid message code ... %d\n", header.RelayCode)
+			relay.Log.Printf(defs.NOTICE, "invalid message code ... %d\n", header.RelayCode)
 		}
 
 		time.Sleep(0 * time.Second) // return context
@@ -894,18 +883,18 @@ func (o *OpenRelay) Heatbeat(relay *defs.RoomInstance, roomId [16]byte) {
 				writeBuf := new(bytes.Buffer)
 				err = binary.Write(writeBuf, binary.LittleEndian, header)
 				if err != nil {
-					relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+					relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 					break
 				}
 				err = binary.Write(writeBuf, binary.LittleEndian, relay.MasterUid)
 				if err != nil {
-					relay.Log.Println(defs.ERRORONLY, "binary write failed. ", err)
+					relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
 					continue
 				}
 
 				err = relay.Pub.SendFrame(writeBuf.Bytes(), goczmq.FlagNone)
 				if err != nil {
-					relay.Log.Println(defs.ERRORONLY, "frame send failed. ", err)
+					relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
 				}
 				relay.Log.Printf(defs.INFO, "-> timeout force logout %s %d", hex.EncodeToString([]byte(g)), k)
 
@@ -913,9 +902,8 @@ func (o *OpenRelay) Heatbeat(relay *defs.RoomInstance, roomId [16]byte) {
 					o.Clean(relay, roomId)
 				}
 
-			} else if o.LogLevel >= defs.VVERBOSE {
-				relay.Log.Printf(defs.VVERBOSE, "-> heatbeat check ok uid: %d time: %d < %d \n", k, v+timeout, time.Now().Unix())
-			}
+			} 
+			relay.Log.Printf(defs.VVERBOSE, "-> heatbeat check ok uid: %d time: %d < %d \n", k, v+timeout, time.Now().Unix())
 		}
 		time.Sleep(interval * time.Millisecond) // return context
 	}
