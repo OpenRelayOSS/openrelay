@@ -32,11 +32,11 @@ const stackDepth = 2
 type LogLevel byte
 
 const (
-	INFO LogLevel = iota
+	NONE LogLevel = iota
+	INFO
 	NOTICE
 	VERBOSE
 	VVERBOSE
-	NONE
 )
 
 const (

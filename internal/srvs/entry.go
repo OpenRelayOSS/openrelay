@@ -292,7 +292,7 @@ func (o *OpenRelay) addRoomResponse(writeBuf *bytes.Buffer, relay defs.RoomInsta
 		return nil, err
 	}
 
-	log.Printf(defs.INFO, "response room roomId :%s", defs.GuidFormatString(roomRes.Id))
+	log.Printf(defs.VERBOSE, "response room roomId :%s", defs.GuidFormatString(roomRes.Id))
 
 	log.Printf(defs.VERBOSE, "response room max players: %d", int(roomRes.Capacity))
 	log.Printf(defs.VERBOSE, "response room UserCount :%d", roomRes.UserCount)
@@ -338,14 +338,14 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 		joinProcessQueueLen = 1
 	}
 	if len(relay.Uids) >= int(room.Capacity) && room.QueuingPolicy == defs.BLOCK_ROOM_MAX {
-		log.Printf(defs.VERBOSE, "<< join capacity over, name: %s, roomId: %s, user/capacity: %d/%d",  requestName, roomIdHexStr, len(relay.Uids), int(room.Capacity))
+		log.Printf(defs.INFO, "<< join capacity over, name: %s, roomId: %s, user/capacity: %d/%d",  requestName, roomIdHexStr, len(relay.Uids), int(room.Capacity))
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("OK " + requestName + " " + roomIdHexStr + " " + strconv.Itoa(int(room.Capacity))))
 		o.printQueueStatus(defs.VERBOSE)
 		log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPreparePolling")
 		return
 	} else if len(relay.Uids)+joinProcessQueueLen+len(joinPollingQueue) >= int(room.Capacity) && room.QueuingPolicy == defs.BLOCK_ROOM_AND_QUEUE_MAX {
-		log.Printf(defs.VERBOSE, "<< join capacity over, name: %s, roomId: %s, user/capacity: %d/%d",  requestName, roomIdHexStr, len(relay.Uids), int(room.Capacity))
+		log.Printf(defs.INFO, "<< join capacity over, name: %s, roomId: %s, user/capacity: %d/%d",  requestName, roomIdHexStr, len(relay.Uids), int(room.Capacity))
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("OK"))
 		o.printQueueStatus(defs.VERBOSE)
