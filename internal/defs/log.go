@@ -39,6 +39,12 @@ const (
 	NONE
 )
 
+const (
+	CALLIN =  "< callin  > "
+	CALLOUT = "< callout > "
+	WATCH =   "< watch   > "
+)
+
 type Logger struct {
 	logger    *log.Logger
 	logVolume LogLevel
@@ -52,7 +58,7 @@ type Recorder struct {
 }
 
 func NewLogger(lv LogLevel, dir string, filename string, needStdout bool) (*Logger, error) {
-	logger := log.New(os.Stdout, "", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
+	logger := log.New(os.Stdout, "", log.LstdFlags|log.Lmicroseconds)
 	file, err := os.OpenFile(dir+"/"+filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0660)
 	if err != nil {
 		return nil, err
@@ -67,29 +73,29 @@ func NewLogger(lv LogLevel, dir string, filename string, needStdout bool) (*Logg
 
 func (l *Logger) Printf(lv LogLevel, format string, v ...interface{}) {
 	if lv <= l.logVolume {
-		l.logger.Output(stackDepth, l.prefix+levelToStr(lv)+fmt.Sprintf(format, v...))
+		l.logger.Output(stackDepth, levelToStr(lv) + l.prefix+ " | " + fmt.Sprintf(format, v...))
 	}
 }
 
 func (l *Logger) Println(lv LogLevel, v ...interface{}) {
 	if lv <= l.logVolume {
-		l.logger.Output(stackDepth, l.prefix+levelToStr(lv)+fmt.Sprintln(v...))
+		l.logger.Output(stackDepth, levelToStr(lv) + l.prefix + " | " + fmt.Sprintln(v...))
 	}
 }
 
 func (l *Logger) Error(v ...interface{}) {
-	l.logger.Output(stackDepth, l.prefix+"[ERROR] "+fmt.Sprintln(v...))
+	l.logger.Output(stackDepth, l.prefix+"| ERROR   | "+fmt.Sprintln(v...))
 	l.printStacktrace(stackDepth + 1)
 }
 
 func (l *Logger) Panic(v ...interface{}) {
-	l.logger.Output(stackDepth, l.prefix+"[PANIC] "+fmt.Sprintln(v...))
+	l.logger.Output(stackDepth, l.prefix+"| PANIC   | "+fmt.Sprintln(v...))
 	l.printStacktrace(stackDepth + 1)
 	panic(l.prefix + " CALLED PANIC.")
 }
 
 func (l *Logger) Fatal(v ...interface{}) {
-	l.logger.Output(stackDepth, l.prefix+"[FATAL] "+fmt.Sprintln(v...))
+	l.logger.Output(stackDepth, l.prefix+"| FATAL   | "+fmt.Sprintln(v...))
 	l.printStacktrace(stackDepth + 1)
 	os.Exit(1)
 }
@@ -125,15 +131,15 @@ func levelToStr(lv LogLevel) string {
 	lvStr := ""
 	switch lv {
 	case INFO:
-		lvStr = "[INFO] "
+		lvStr = "| INFO     "
 	case NOTICE:
-		lvStr = "[NOTICE] "
+		lvStr = "| NOTICE   "
 	case VERBOSE:
-		lvStr = "[VERBOSE] "
+		lvStr = "| VERBOSE  "
 	case VVERBOSE:
-		lvStr = "[VVERBOSE] "
+		lvStr = "| VVERBOSE "
 	default:
-		lvStr = "[NONE] "
+		lvStr = "| NONE     "
 	}
 	return lvStr
 }

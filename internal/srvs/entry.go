@@ -53,7 +53,7 @@ func version(w http.ResponseWriter, r *http.Request) {
 	if !validateGet(w, r) {
 		return
 	}
-	log.Println(defs.VERBOSE, "version called.")
+	log.Println(defs.VERBOSE, defs.CALLIN, "version")
 
 	switch r.Header.Get("User-Agent") {
 	case defs.UA_UNITY_CDK:
@@ -71,22 +71,25 @@ func version(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusBadRequest)
 	}
+	log.Println(defs.VERBOSE, defs.CALLOUT, "version")
 }
 
 func logon(w http.ResponseWriter, r *http.Request) {
 	validatePost(w, r)
-	log.Println(defs.VERBOSE, "logon called.")
+	log.Println(defs.VERBOSE, defs.CALLIN, "logon")
 	w.Write([]byte("OK")) //TODO sessid
+	log.Println(defs.VERBOSE, defs.CALLOUT, "logon")
 }
 
 func addLogonResponse(relay *defs.RoomInstance) ([]byte, error) {
-	log.Println(defs.VVERBOSE, "addLogonResponse called.")
+	log.Println(defs.VVERBOSE, defs.CALLIN, "addLogonResponse")
+	log.Println(defs.VVERBOSE, defs.CALLOUT, "addLogonResponse")
 	return nil, nil
 }
 
 func (o *OpenRelay) Rooms(w http.ResponseWriter, r *http.Request) {
 	validateGet(w, r)
-	log.Println(defs.VERBOSE, "Rooms called.")
+	log.Println(defs.VERBOSE, defs.CALLIN, "Rooms")
 
 	var err error
 	writeBuf := new(bytes.Buffer)
@@ -97,6 +100,7 @@ func (o *OpenRelay) Rooms(w http.ResponseWriter, r *http.Request) {
 			log.Error("binary write failed. ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+			log.Println(defs.VERBOSE, defs.CALLOUT, "Rooms")
 			return
 		}
 		for _, roomId := range o.ReserveRooms {
@@ -106,6 +110,7 @@ func (o *OpenRelay) Rooms(w http.ResponseWriter, r *http.Request) {
 				log.Error("binary write failed. ", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+				log.Println(defs.VERBOSE, defs.CALLOUT, "Rooms")
 				return
 			}
 		}
@@ -117,31 +122,37 @@ func (o *OpenRelay) Rooms(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(writeBuf.Bytes())
 	}
+
+	log.Println(defs.VERBOSE, defs.CALLOUT, "Rooms")
 }
 
 func (o *OpenRelay) roomsResponse(relay *defs.RoomInstance) ([]byte, error) {
-	log.Println(defs.VVERBOSE, "roomsResponse called.")
+	log.Println(defs.VVERBOSE, defs.CALLIN, "roomsResponse")
+	log.Println(defs.VVERBOSE, defs.CALLOUT, "roomsResponse")
 	return nil, nil
 }
 
 func (o *OpenRelay) roomInfo(w http.ResponseWriter, r *http.Request) {
 	validateGet(w, r)
-	log.Println(defs.VERBOSE, "roomsInfo called.")
+	log.Println(defs.VERBOSE, defs.CALLIN, "roomsInfo")
 	w.Write([]byte("OK"))
+	log.Println(defs.VERBOSE, defs.CALLOUT, "roomsInfo")
 }
 
 func (o *OpenRelay) roomInfoResponse(relay *defs.RoomInstance) ([]byte, error) {
-	log.Println(defs.VVERBOSE, "roomsInfoResponse called.")
+	log.Println(defs.VVERBOSE, defs.CALLIN, "roomsInfoResponse")
+	log.Println(defs.VVERBOSE, defs.CALLOUT, "roomsInfoResponse")
 	return nil, nil
 }
 
 func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 	validatePost(w, r)
-	log.Println(defs.VERBOSE, "Create called.")
+	log.Println(defs.VERBOSE, defs.CALLIN, "Create")
 	if len(o.HotRoomQueue) <= 0 {
 		log.Println(defs.NOTICE, "room capacity over.")
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_CREATE_ROOM_CAPACITY_OVER))
+		log.Println(defs.VERBOSE, defs.CALLOUT, "Create")
 		return
 	}
 	requestName := strings.Replace(r.URL.Path, "/room/create/", "", 1)
@@ -158,6 +169,7 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 			log.Error("binary write failed. ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+			log.Println(defs.VERBOSE, defs.CALLOUT, "Create")
 			return
 		}
 		binary.Write(writeBuf, binary.LittleEndian, uint16(0)) // alignment
@@ -174,6 +186,7 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 			log.Error("polling failed. ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_REQUEST_READ_FAILED))
+			log.Println(defs.VERBOSE, defs.CALLOUT, "Create")
 			return
 		}
 		readBuf := bytes.NewReader(body)
@@ -184,6 +197,7 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 			log.Error("binary read failed. invalid request data", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_REQUEST_READ_FAILED))
+			log.Println(defs.VERBOSE, defs.CALLOUT, "Create")
 			return
 		}
 		o.RoomQueue[roomIdHexStr].Name = requestName
@@ -195,6 +209,7 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 			log.Error("binary write failed. ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+			log.Println(defs.VERBOSE, defs.CALLOUT, "Create")
 			return
 		}
 		binary.Write(writeBuf, binary.LittleEndian, uint16(0)) // alignment
@@ -205,32 +220,38 @@ func (o *OpenRelay) Create(w http.ResponseWriter, r *http.Request) {
 		log.Error("binary write failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+		log.Println(defs.VERBOSE, defs.CALLOUT, "Create")
 		return
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(writeBuf.Bytes())
+	o.printQueueStatus(defs.VERBOSE)
+	log.Println(defs.VERBOSE, defs.CALLOUT, "Create")
 }
 
 func (o *OpenRelay) getResponseBytes(code defs.ResponseCode) []byte {
-	log.Println(defs.VVERBOSE, "getResponseBytes called.")
+	log.Println(defs.VVERBOSE, defs.CALLIN, "getResponseBytes")
 	writeBuf := new(bytes.Buffer)
 	binary.Write(writeBuf, binary.LittleEndian, code)      //ignore error ok.
 	binary.Write(writeBuf, binary.LittleEndian, uint16(0)) //ignore error ok.
+	log.Println(defs.VVERBOSE, defs.CALLOUT, "getResponseBytes")
 	return writeBuf.Bytes()
 }
 
 func (o *OpenRelay) addResponseBytes(writeBuf *bytes.Buffer, code defs.ResponseCode) (*bytes.Buffer, error) {
-	log.Println(defs.VVERBOSE, "addResponseBytes called.")
+	log.Println(defs.VVERBOSE, defs.CALLIN, "addResponseBytes")
 	var err error
 	err = binary.Write(writeBuf, binary.LittleEndian, code)
 	if err != nil {
+		log.Println(defs.VVERBOSE, defs.CALLOUT, "addResponseBytes")
 		return nil, err
 	}
+	log.Println(defs.VVERBOSE, defs.CALLOUT, "addResponseBytes")
 	return writeBuf, nil
 }
 
 func (o *OpenRelay) addRoomResponse(writeBuf *bytes.Buffer, relay defs.RoomInstance, room defs.RoomParameter) (*bytes.Buffer, error) {
-	log.Println(defs.VVERBOSE, "addRoomResponse called.")
+	log.Println(defs.VVERBOSE, defs.CALLIN, "addRoomResponse")
 	var err error
 	roomRes := defs.RoomResponse{}
 	roomRes.Id = room.Id
@@ -255,16 +276,19 @@ func (o *OpenRelay) addRoomResponse(writeBuf *bytes.Buffer, relay defs.RoomInsta
 	roomRes.ListenMode = byte(o.ListenMode)
 	ipv4Addr, err := net.ResolveIPAddr("ip4", o.ListenIpv4)
 	if err != nil {
+		log.Println(defs.VVERBOSE, defs.CALLOUT, "addRoomResponse")
 		return nil, err
 	}
 	copy(roomRes.ListenAddrIpv4[:], ipv4Addr.IP.To4()[:4])
 	ipv6Addr, err := net.ResolveIPAddr("ip6", o.ListenIpv6)
 	if err != nil {
+		log.Println(defs.VVERBOSE, defs.CALLOUT, "addRoomResponse")
 		return nil, err
 	}
 	copy(roomRes.ListenAddrIpv6[:], ipv6Addr.IP.To16())
 	err = binary.Write(writeBuf, binary.LittleEndian, roomRes)
 	if err != nil {
+		log.Println(defs.VVERBOSE, defs.CALLOUT, "addRoomResponse")
 		return nil, err
 	}
 
@@ -287,17 +311,20 @@ func (o *OpenRelay) addRoomResponse(writeBuf *bytes.Buffer, relay defs.RoomInsta
 	log.Printf(defs.VERBOSE, "response room listen addr ipv6(origin) :%s", o.ListenIpv6)
 	log.Printf(defs.VERBOSE, "response room listen addr ipv6(resolve addr) :%s", ipv6Addr.IP.String())
 	log.Printf(defs.VERBOSE, "response room listen addr ipv6(parsed) :%x", roomRes.ListenAddrIpv6)
+
+	log.Println(defs.VVERBOSE, defs.CALLOUT, "addRoomResponse")
 	return writeBuf, nil
 }
 
 func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 	validatePut(w, r)
-	log.Println(defs.VERBOSE, "JoinPreparePolling called.")
+	log.Println(defs.VERBOSE, defs.CALLIN, "JoinPreparePolling")
 	requestName := strings.Replace(r.URL.Path, "/room/join_prepare_polling/", "", 1)
 	roomId, exist := o.ReserveRooms[requestName]
 	if !exist {
 		log.Println(defs.NOTICE, "room not found.")
 		w.WriteHeader(http.StatusInternalServerError)
+		log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPreparePolling")
 		return
 	}
 	roomIdHexStr := defs.GuidFormatString(roomId)
@@ -311,14 +338,18 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 		joinProcessQueueLen = 1
 	}
 	if len(relay.Uids) >= int(room.Capacity) && room.QueuingPolicy == defs.BLOCK_ROOM_MAX {
-		log.Println(defs.VERBOSE, "OK request name: %s, roomId: %s, capacity: %d",  requestName, roomIdHexStr, int(room.Capacity))
+		log.Printf(defs.VERBOSE, "<< join capacity over, name: %s, roomId: %s, user/capacity: %d/%d",  requestName, roomIdHexStr, len(relay.Uids), int(room.Capacity))
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("OK " + requestName + " " + roomIdHexStr + " " + strconv.Itoa(int(room.Capacity))))
+		o.printQueueStatus(defs.VERBOSE)
+		log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPreparePolling")
 		return
 	} else if len(relay.Uids)+joinProcessQueueLen+len(joinPollingQueue) >= int(room.Capacity) && room.QueuingPolicy == defs.BLOCK_ROOM_AND_QUEUE_MAX {
-		log.Println(defs.VERBOSE, "OK request name: %s, roomId: %s, capacity: %d",  requestName, roomIdHexStr, int(room.Capacity))
+		log.Printf(defs.VERBOSE, "<< join capacity over, name: %s, roomId: %s, user/capacity: %d/%d",  requestName, roomIdHexStr, len(relay.Uids), int(room.Capacity))
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("OK"))
+		o.printQueueStatus(defs.VERBOSE)
+		log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPreparePolling")
 		return
 	}
 
@@ -326,6 +357,8 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Error("polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		o.printQueueStatus(defs.VERBOSE)
+		log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPreparePolling")
 		return
 	}
 	body := make([]byte, length)
@@ -333,6 +366,8 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 	if err != nil && err != io.EOF {
 		log.Error("polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		o.printQueueStatus(defs.VERBOSE)
+		log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPreparePolling")
 		return
 	}
 	readBuf := bytes.NewReader(body[:length])
@@ -341,6 +376,8 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Error("polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		o.printQueueStatus(defs.VERBOSE)
+		log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPreparePolling")
 		return
 	}
 	hexJoinSeed := hex.EncodeToString(joinSeed)
@@ -360,6 +397,8 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 		o.JoinAllTimeoutQueue[roomIdHexStr] = joinTimeoutQueue
 		if needTimeoutResponse {
 			w.WriteHeader(http.StatusRequestTimeout)
+			o.printQueueStatus(defs.VERBOSE)
+			log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPreparePolling")
 			return
 		}
 	}
@@ -377,6 +416,9 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 				w.Write(res)
 			}
+			o.printQueueStatus(defs.VERBOSE)
+			log.Println(defs.VERBOSE, "JoinPreparePolling len(joinPollingQueue) == 0, nowait fastforward to join.")
+			log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPreparePolling")
 			return
 		} else if check := hex.EncodeToString(joinPollingQueue[0]); check == hexJoinSeed {
 			res, err := o.JoinPrepareResponse(relay, joinSeed)
@@ -392,6 +434,9 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 				w.Write(res)
 			}
+			o.printQueueStatus(defs.VERBOSE)
+			log.Println(defs.VERBOSE, "JoinPreparePolling check == hexJoinSeed, turn comes to join.")
+			log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPreparePolling")
 			return
 		} else {
 			if !contains(joinPollingQueue, joinSeed) {
@@ -399,6 +444,9 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 				o.JoinAllPollingQueue[roomIdHexStr] = joinPollingQueue
 			}
 			w.WriteHeader(http.StatusContinue)
+			o.printQueueStatus(defs.VERBOSE)
+			log.Println(defs.VERBOSE, "JoinPreparePolling check != hexJoinSeed, turn does not come to join, need wait.")
+			log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPreparePolling")
 			return
 		}
 
@@ -408,6 +456,9 @@ func (o *OpenRelay) JoinPreparePolling(w http.ResponseWriter, r *http.Request) {
 			o.JoinAllPollingQueue[roomIdHexStr] = joinPollingQueue
 		}
 		w.WriteHeader(http.StatusContinue)
+		o.printQueueStatus(defs.VERBOSE)
+		log.Println(defs.VERBOSE, "other joining process now, need wait.")
+		log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPreparePolling")
 		return
 	}
 }
@@ -462,7 +513,7 @@ func (o *OpenRelay) readJoinSeed(readBuf *bytes.Reader) ([]byte, error) {
 }
 
 func (o *OpenRelay) JoinPrepareResponse(relay *defs.RoomInstance, joinSeed []byte) ([]byte, error) {
-	log.Println(defs.VERBOSE, "JoinPrepareResponse called.")
+	log.Println(defs.VVERBOSE, defs.CALLIN, "JoinPrepareResponse")
 	var err error
 	writeBuf := new(bytes.Buffer)
 	relay.LastUid += 1
@@ -482,28 +533,33 @@ func (o *OpenRelay) JoinPrepareResponse(relay *defs.RoomInstance, joinSeed []byt
 	alignmentLen := uint16(0)
 	alignment := []byte{}
 	relay.Hbs[assginUid] = time.Now().Unix()
-	log.Println(defs.INFO, "-> join ", relay.LastUid, ", seed ", hex.EncodeToString(joinSeed))
+	log.Println(defs.INFO, ">> join request ", relay.LastUid, ", seed ", hex.EncodeToString(joinSeed))
 
 	err = binary.Write(writeBuf, binary.LittleEndian, relay.MasterUid)
 	if err != nil {
+		log.Println(defs.VVERBOSE, defs.CALLOUT, "JoinPrepareResponse")
 		return nil, err
 	}
 	err = binary.Write(writeBuf, binary.LittleEndian, assginUid)
 	if err != nil {
+		log.Println(defs.VVERBOSE, defs.CALLOUT, "JoinPrepareResponse")
 		return nil, err
 	}
 	err = binary.Write(writeBuf, binary.LittleEndian, joinedUidsLen)
 	if err != nil {
+		log.Println(defs.VVERBOSE, defs.CALLOUT, "JoinPrepareResponse")
 		return nil, err
 	}
 
 	err = binary.Write(writeBuf, binary.LittleEndian, joinedNamesLen)
 	if err != nil {
+		log.Println(defs.VVERBOSE, defs.CALLOUT, "JoinPrepareResponse")
 		return nil, err
 	}
 
 	err = binary.Write(writeBuf, binary.LittleEndian, joinedUids)
 	if err != nil {
+		log.Println(defs.VVERBOSE, defs.CALLOUT, "JoinPrepareResponse")
 		return nil, err
 	}
 	//write adjust alignment at joinedUidsLen.
@@ -512,6 +568,7 @@ func (o *OpenRelay) JoinPrepareResponse(relay *defs.RoomInstance, joinSeed []byt
 		alignment = make([]byte, alignmentLen)
 		err = binary.Write(writeBuf, binary.LittleEndian, alignment)
 		if err != nil {
+			log.Println(defs.VVERBOSE, defs.CALLOUT, "JoinPrepareResponse")
 			return nil, err
 		}
 	}
@@ -522,11 +579,13 @@ func (o *OpenRelay) JoinPrepareResponse(relay *defs.RoomInstance, joinSeed []byt
 
 		err = binary.Write(writeBuf, binary.LittleEndian, nameLen)
 		if err != nil {
+			log.Println(defs.VVERBOSE, defs.CALLOUT, "JoinPrepareResponse")
 			return nil, err
 		}
 
 		err = binary.Write(writeBuf, binary.LittleEndian, nameBytes)
 		if err != nil {
+			log.Println(defs.VVERBOSE, defs.CALLOUT, "JoinPrepareResponse")
 			return nil, err
 		}
 		//write adjust alignment at nameLen.
@@ -535,17 +594,18 @@ func (o *OpenRelay) JoinPrepareResponse(relay *defs.RoomInstance, joinSeed []byt
 			alignment = make([]byte, alignmentLen)
 			err = binary.Write(writeBuf, binary.LittleEndian, alignment)
 			if err != nil {
+				log.Println(defs.VVERBOSE, defs.CALLOUT, "JoinPrepareResponse")
 				return nil, err
 			}
 		}
 	}
-	log.Println(defs.VERBOSE, "JoinPrepareResponse finished.")
+	log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPrepareResponse")
 	return writeBuf.Bytes(), nil
 }
 
 func (o *OpenRelay) RoomProp(w http.ResponseWriter, r *http.Request) {
 	validateGet(w, r)
-	log.Println(defs.VERBOSE, "RoomProp called.")
+	log.Println(defs.VERBOSE, defs.CALLIN, "RoomProp")
 	requestName := strings.Replace(r.URL.Path, "/room/prop/", "", 1)
 	var err error
 	roomId, _ := o.ReserveRooms[requestName]
@@ -560,6 +620,7 @@ func (o *OpenRelay) RoomProp(w http.ResponseWriter, r *http.Request) {
 		log.Error("binary write failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+		log.Println(defs.VERBOSE, defs.CALLOUT, "RoomProp")
 		return
 	}
 	err = binary.Write(writeBuf, binary.LittleEndian, contentLen)
@@ -567,6 +628,7 @@ func (o *OpenRelay) RoomProp(w http.ResponseWriter, r *http.Request) {
 		log.Error("binary write failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+		log.Println(defs.VERBOSE, defs.CALLOUT, "RoomProp")
 		return
 	}
 
@@ -575,21 +637,24 @@ func (o *OpenRelay) RoomProp(w http.ResponseWriter, r *http.Request) {
 		log.Error("binary write failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+		log.Println(defs.VERBOSE, defs.CALLOUT, "RoomProp")
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(writeBuf.Bytes())
+	log.Println(defs.VERBOSE, defs.CALLOUT, "RoomProp")
 }
 
 func (o *OpenRelay) JoinPrepareComplete(w http.ResponseWriter, r *http.Request) {
 	validatePost(w, r)
-	log.Println(defs.VERBOSE, "JoinPrepareComplete called.")
+	log.Println(defs.VERBOSE, defs.CALLIN, "JoinPrepareComplete")
 	requestName := strings.Replace(r.URL.Path, "/room/join_prepare_complete/", "", 1)
 	roomId, exist := o.ReserveRooms[requestName]
 	if !exist {
 		log.Println(defs.NOTICE, "room not found.")
 		w.WriteHeader(http.StatusInternalServerError)
+		log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPrepareComplete")
 		return
 	}
 
@@ -597,6 +662,7 @@ func (o *OpenRelay) JoinPrepareComplete(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		log.Error("polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPrepareComplete")
 		return
 	}
 	body := make([]byte, length)
@@ -604,6 +670,7 @@ func (o *OpenRelay) JoinPrepareComplete(w http.ResponseWriter, r *http.Request) 
 	if err != nil && err != io.EOF {
 		log.Error("polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPrepareComplete")
 		return
 	}
 	readBuf := bytes.NewReader(body[:length])
@@ -612,6 +679,7 @@ func (o *OpenRelay) JoinPrepareComplete(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		log.Error("polling failed. ", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPrepareComplete")
 		return
 	}
 
@@ -619,22 +687,27 @@ func (o *OpenRelay) JoinPrepareComplete(w http.ResponseWriter, r *http.Request) 
 	joinProcessQueue := o.JoinAllProcessQueue[roomIdHexStr]
 	hexJoinSeed := hex.EncodeToString(joinSeed)
 	if joinProcessQueue.Seed == hexJoinSeed {
-		log.Printf(defs.INFO, "seed is match %s == %s \n", joinProcessQueue.Seed, hexJoinSeed)
+		log.Printf(defs.INFO, ">> join complate seed is match %s == %s \n", joinProcessQueue.Seed, hexJoinSeed)
 		joinProcessQueue := defs.RoomJoinRequest{Seed: "", Timestamp: 0}
 		o.JoinAllProcessQueue[roomIdHexStr] = joinProcessQueue
 		w.WriteHeader(http.StatusOK)
+		o.printQueueStatus(defs.VERBOSE)
+		log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPrepareComplete")
 		return
 	} else {
-		log.Printf(defs.NOTICE, "seed is not match %s != %s \n", joinProcessQueue.Seed, hexJoinSeed)
+		log.Printf(defs.NOTICE, ">> join not complete seed is not match %s != %s \n", joinProcessQueue.Seed, hexJoinSeed)
 		w.WriteHeader(http.StatusInternalServerError)
+		o.printQueueStatus(defs.VERBOSE)
+		log.Println(defs.VERBOSE, defs.CALLOUT, "JoinPrepareComplete")
 		return
 	}
 }
 
 func logoff(w http.ResponseWriter, r *http.Request) {
 	validatePost(w, r)
-	log.Println(defs.VERBOSE, "logoff called.")
+	log.Println(defs.VERBOSE, defs.CALLIN, "logoff")
 	w.Write([]byte("OK"))
+	log.Println(defs.VERBOSE, defs.CALLOUT, "logoff")
 }
 
 func validateGet(w http.ResponseWriter, r *http.Request) bool {

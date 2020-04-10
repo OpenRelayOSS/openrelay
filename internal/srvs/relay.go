@@ -29,7 +29,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	//	"github.com/pion/dtls/examples/util"
+	//"github.com/pion/dtls/examples/util"
 )
 
 var log *defs.Logger
@@ -127,10 +127,25 @@ _______________________________________________________________________________
 	}
 	log.Printf(defs.INFO, "available room :%d", len(o.HotRoomQueue))
 	log.Printf(defs.INFO, "initialize ok")
+	o.printQueueStatus(defs.VERBOSE)
 }
 
 func (o *OpenRelay) ServiceClose() {
 	log.Close()
+}
+
+func (o *OpenRelay) printQueueStatus(lv defs.LogLevel) {
+	log.Printf(lv, "queing status JoinAllPollingQueue %v", o.JoinAllPollingQueue)
+	log.Printf(lv, "queing status JoinAllProcessQueue %v", o.JoinAllProcessQueue)
+	log.Printf(lv, "queing status JoinAllTimeoutQueue %v", o.JoinAllTimeoutQueue)
+	log.Printf(lv, "queing status JoinProcessTimeStart %d", o.JoinProcessTimeStart)
+	log.Printf(lv, "queing status RoomQueue %v", o.RoomQueue)
+	log.Printf(lv, "queing status RelayQueue %v", o.RelayQueue)
+	log.Printf(lv, "queing status ReserveRooms %v", o.ReserveRooms)
+	log.Printf(lv, "queing status ResolveRoomIds %v", o.ResolveRoomIds)
+	log.Printf(lv, "queing status HotRoomQueue %v", o.HotRoomQueue)
+	log.Printf(lv, "queing status ColdRoomQueue %v", o.ColdRoomQueue)
+	log.Printf(lv, "queing status CleaningRoomQueue %v", o.CleaningRoomQueue)
 }
 
 func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance) {
@@ -154,7 +169,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 	joinPollingQueue = make([][]byte, 0)
 	o.JoinAllPollingQueue[roomIdHexStr] = joinPollingQueue
 
-	relay.Log.SetPrefix("[" + roomIdHexStr + "] ")
+	relay.Log.SetPrefix("| " + roomIdHexStr + " ")
 
 	//addr := &net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: int(room.StlDealPort)}
 	//config := &dtls.Config{
@@ -191,15 +206,17 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 
 	relay.Router, err = goczmq.NewRouter(o.StfDealProto + "://" + o.StfDealHost + ":" + strconv.Itoa(int(room.StfDealPort)))
 	if err != nil {
-		relay.Log.Panic("relay.Router create relay " + defs.GuidFormatString(room.Id) + " failed. "+o.StfDealProto+"://"+o.StfDealHost+":"+strconv.Itoa(int(room.StfDealPort)), err)
+		relay.Log.Panic("relay.Router create relay "+roomIdHexStr+" failed. "+o.StfDealProto+"://"+o.StfDealHost+":"+strconv.Itoa(int(room.StfDealPort)), err)
 	}
 	defer relay.Router.Destroy()
 
 	relay.Pub, err = goczmq.NewPub(o.StfSubProto + "://" + o.StfSubHost + ":" + strconv.Itoa(int(room.StfSubPort)))
 	if err != nil {
-		relay.Log.Panic("relay.Pub create relay " + defs.GuidFormatString(room.Id) + " failed. "+o.StfSubProto+"://"+o.StfSubHost+":"+strconv.Itoa(int(room.StfSubPort)), err)
+		relay.Log.Panic("relay.Pub create relay "+roomIdHexStr+" failed. "+o.StfSubProto+"://"+o.StfSubHost+":"+strconv.Itoa(int(room.StfSubPort)), err)
 	}
 	defer relay.Pub.Destroy()
+
+	relay.Log.Println(defs.VERBOSE, "start relay: ", roomIdHexStr)
 
 	header := defs.Header{}
 	for {
@@ -902,7 +919,7 @@ func (o *OpenRelay) Heatbeat(relay *defs.RoomInstance, roomId [16]byte) {
 					o.Clean(relay, roomId)
 				}
 
-			} 
+			}
 			relay.Log.Printf(defs.VVERBOSE, "-> heatbeat check ok uid: %d time: %d < %d \n", k, v+timeout, time.Now().Unix())
 		}
 		time.Sleep(interval * time.Millisecond) // return context
