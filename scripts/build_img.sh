@@ -90,6 +90,7 @@ cp ${RPMBUILD_RPMS_PATH}/${IMAGE_FULLNAME}.rpm ${ORIGIN_RPMS_PATH}/ || die "copy
 
 if [ "x${NEED_DOCKER_BUILD}" = "x1" ];then
     sudo ${PODMAN_COMPOSE} -f deployments/docker-compose.yml build || die "docker build failed"
+    sudo ${PODMAN} tag deployments_openrelay:latest kyadet/openrelay:latest
 fi
 
 cd ${RET_DIR}
