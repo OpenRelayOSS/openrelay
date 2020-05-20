@@ -74,6 +74,7 @@ cp ${REPO_ROOT_PATH}/configs/${IMAGE_NAME_MAIN}.env ${SOURCES_PATH}/${IMAGE_FULL
 cp ${REPO_ROOT_PATH}/extlib/libczmq.so.*.*.* ${SOURCES_PATH}/${IMAGE_FULLNAME}/
 cp ${REPO_ROOT_PATH}/extlib/libsodium.so.*.*.* ${SOURCES_PATH}/${IMAGE_FULLNAME}/
 cp ${REPO_ROOT_PATH}/extlib/libzmq.so.*.*.* ${SOURCES_PATH}/${IMAGE_FULLNAME}/
+cp ${REPO_ROOT_PATH}/LICENSE ${SOURCES_PATH}/${IMAGE_FULLNAME}/
 
 cd ${SOURCES_PATH}
 tar zcvf ${IMAGE_FULLNAME}.tar.gz ${IMAGE_FULLNAME}

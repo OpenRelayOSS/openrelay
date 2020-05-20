@@ -7,7 +7,7 @@ Version:	0.9
 Release:	8
 Summary:	OpenRelay - Realtime Relay Messaging Server
 Group:		Applications/Internet
-License:	GPL2
+License:	GPLv2
 URL:		http://openrelay.info/
 Source0:	%{name}-%{version}-%{release}.x86_64.tar.gz
 Requires:       libunwind 
@@ -89,6 +89,8 @@ fi
 /usr/local/%{name}/lib/libsodium.so.*.*.*
 /usr/local/%{name}/lib/libzmq.so.*.*.*
 /usr/local/%{name}/lib/libczmq.so.*.*.*
+
+%license LICENSE
 
 %changelog
 
