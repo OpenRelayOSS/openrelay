@@ -15,6 +15,6 @@ GNU General Public License v2.0
 
 @see [DEPENDENT LICENSES](https://github.com/OpenRelayOSS/openrelay/blob/master/LICENSE)
 
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FOpenRelayOSS%2Fopenrelay.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FOpenRelayOSS%2Fopenrelay?ref=badge_large)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FOpenRelayOSS%2Fopenrelay.svg?type=small)](https://app.fossa.com/projects/git%2Bgithub.com%2FOpenRelayOSS%2Fopenrelay?ref=badge_small)
 
 ©︎ FurtherSystem Co.,Ltd.
