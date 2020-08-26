@@ -50,37 +50,19 @@ func (o *OpenRelay) ServiceInit() {
 		// check port valid
 		// check port count
 		// check port conflict
-		room := defs.RoomParameter{}
-		room.ListenMode = byte(o.ListenMode)
-		room.Id, err = defs.NewGuid()
-		if err != nil {
-			log.Panic("guid cannot create, initialize faild. ", err)
-		}
-		roomIdHexStr := defs.GuidFormatString(room.Id)
-		relayLog, err := defs.NewLogger(o.LogLevel, o.LogDir, defs.RelayLogFilePrefix+"-"+strconv.Itoa(index)+defs.FileSuffix, false)
-		if err != nil {
-			log.Panic("relay log initialize faild. ", err)
-		}
-		rec, err := defs.NewRecorder(o.LogDir, defs.RelayRecFilePrefix+defs.FileSuffix)
-		if err != nil {
-			log.Panic("relay rec initialize faild. ", err)
-		}
-		relayInstance := defs.RoomInstance{Log: relayLog, Rec: rec, ABLoop: defs.ALoop}
 		var port int
 		port, err = strconv.Atoi(stfDealPortArray[index])
 		if err != nil {
 			log.Panic("invalid port, initialize faild. ", err)
 		}
-		room.StfDealPort = uint16(port)
+		stfDealPort := uint16(port)
 		port, err = strconv.Atoi(stfSubPortArray[index])
 		if err != nil {
 			log.Panic("invalid port, initialize faild. ", err)
 		}
-		room.StfSubPort = uint16(port)
-		room.UseStateless = false
-		o.HotRoomQueue = append(o.HotRoomQueue, room.Id)
-		o.RoomQueue[roomIdHexStr] = &room
-		o.RelayQueue[roomIdHexStr] = &relayInstance
+		stfSubPort := uint16(port)
+
+		o.Start(index, stfDealPort, stfSubPort)
 	}
 	fmt.Printf(`
                
@@ -119,12 +101,6 @@ _______________________________________________________________________________
 
 
 `, defs.Version, defs.Shorthash)
-	for _, id := range o.HotRoomQueue {
-		roomIdHexStr := defs.GuidFormatString(id)
-		o.Clean(o.RelayQueue[roomIdHexStr], o.RoomQueue[roomIdHexStr].Id)
-		go o.RelayServ(o.RoomQueue[roomIdHexStr], o.RelayQueue[roomIdHexStr])
-		go o.Heatbeat(o.RelayQueue[roomIdHexStr], id)
-	}
 	log.Printf(defs.INFO, "available room :%d", len(o.HotRoomQueue))
 	log.Printf(defs.INFO, "initialize ok")
 	o.printQueueStatus(defs.VERBOSE)
@@ -132,6 +108,7 @@ _______________________________________________________________________________
 
 func (o *OpenRelay) ServiceClose() {
 	log.Close()
+	// all relay close loop
 }
 
 func (o *OpenRelay) printQueueStatus(lv defs.LogLevel) {
@@ -219,7 +196,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 	relay.Log.Println(defs.VERBOSE, "start relay: ", roomIdHexStr)
 
 	header := defs.Header{}
-	for {
+	for relay.Status == defs.LISTEN {
 		request, err := relay.Router.RecvMessage()
 		if err != nil {
 			relay.Log.Println(defs.NOTICE, "relay.Router recv failed. ", err)
@@ -415,7 +392,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			delete(relay.Hbs, srcUid)
 
 			if len(relay.Guids) == 0 {
-				o.Clean(relay, room.Id)
+				o.Close(relay, room.Id)
 			} else if relay.MasterUid == srcUid {
 				for i, _ := range relay.Uids {
 					relay.MasterUid = i
@@ -838,42 +815,94 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 
 		time.Sleep(0 * time.Second) // return context
 	}
+
+	relay.Log.Println(defs.VERBOSE, "exit relay id:", roomIdHexStr)
+	relay.ToClosed()
 }
 
-func (o *OpenRelay) Clean(relay *defs.RoomInstance, roomId [16]byte) {
+func (o *OpenRelay) Close(relay *defs.RoomInstance, roomId [16]byte) {
 	roomIdHexStr := defs.GuidFormatString(roomId)
 	roomName := o.ResolveRoomIds[roomIdHexStr]
 	delete(o.ReserveRooms, roomName)
 	delete(o.ResolveRoomIds, roomIdHexStr)
+	delete(o.JoinAllProcessQueue, roomIdHexStr)
+	delete(o.JoinAllPollingQueue, roomIdHexStr)
+	relay.ToClose()
 
-	relay.MasterUidNeed = true
-	relay.Guids = make(map[string]defs.PlayerId)
-	relay.Uids = make(map[defs.PlayerId]string)
-	relay.Names = make(map[defs.PlayerId]string)
-	relay.Hbs = make(map[defs.PlayerId]int64)
-	relay.Props = make(map[string][]byte)
-	relay.LastUid = 0
-	relay.MasterUid = 0
-	relay.MasterUidNeed = true
-	relay.ABLoop = defs.ALoop
+	o.ColdRoomQueue = append(o.ColdRoomQueue, roomId)
+	relay.Log.Rotate()
+	relay.Log.Printf(defs.INFO, "close room ok, id:%s", roomIdHexStr)
+}
+
+func (o *OpenRelay) Recycle(coldIndex int) {
+	roomId := o.ColdRoomQueue[coldIndex]
+	roomIdHexStr := defs.GuidFormatString(roomId)
+	room := o.RoomQueue[roomIdHexStr]
+	relay := o.RelayQueue[roomIdHexStr]
+	relay.Log.Printf(defs.INFO, "remove room ok, index:%d id:%s", room.Index, roomIdHexStr)
+	delete(o.RoomQueue, roomIdHexStr)
+	delete(o.RelayQueue, roomIdHexStr)
+	o.Start(room.Index, room.StfDealPort, room.StfSubPort)
+}
+
+func (o *OpenRelay) Start(index int, stfDealPort , stfSubPort uint16) {
+	var err error
+
+	room := defs.RoomParameter{}
+	room.ListenMode = byte(o.ListenMode)
+	room.Id, err = defs.NewGuid()
+	if err != nil {
+		log.Panic("guid cannot create, initialize faild. ", err)
+	}
+	roomIdHexStr := defs.GuidFormatString(room.Id)
+	relayLog, err := defs.NewLogger(o.LogLevel, o.LogDir, defs.RelayLogFilePrefix+"-"+strconv.Itoa(index)+defs.FileSuffix, false)
+	if err != nil {
+		log.Panic("relay log initialize faild. ", err)
+	}
+	rec, err := defs.NewRecorder(o.LogDir, defs.RelayRecFilePrefix+defs.FileSuffix)
+	if err != nil {
+		log.Panic("relay rec initialize faild. ", err)
+	}
+	relay := defs.RoomInstance{Log: relayLog, Rec: rec, ABLoop: defs.ALoop}
+        relay.MasterUidNeed = true
+        relay.Guids = make(map[string]defs.PlayerId)
+        relay.Uids = make(map[defs.PlayerId]string)
+        relay.Names = make(map[defs.PlayerId]string)
+        relay.Hbs = make(map[defs.PlayerId]int64)
+        relay.Props = make(map[string][]byte)
+        relay.LastUid = 0
+        relay.MasterUid = 0
+        relay.MasterUidNeed = true
+        relay.ABLoop = defs.ALoop
+	relay.ToListen()
+
+	room.StfDealPort = stfDealPort
+	room.StfSubPort = stfSubPort
+	room.Index = index
+	room.UseStateless = false
+	// restart here. relay, hbckeck
+	o.RoomQueue[roomIdHexStr] = &room
+	o.RelayQueue[roomIdHexStr] = &relay
 	o.JoinAllProcessQueue[roomIdHexStr] = defs.RoomJoinRequest{Seed: "", Timestamp: 0}
-
 	joinPollingQueue := make([][]byte, 0)
 	o.JoinAllPollingQueue[roomIdHexStr] = joinPollingQueue
-
-	// restart here. relay, hbckeck
-
-	//	o.HotRoomQueue = append(o.HotRoomQueue, roomId)
 	relay.Log.Rotate()
-	relay.Log.Printf(defs.INFO, "cleaning room ok, id:%s", roomIdHexStr)
+
+	go o.RelayServ(o.RoomQueue[roomIdHexStr], o.RelayQueue[roomIdHexStr])
+	go o.Heatbeat(o.RelayQueue[roomIdHexStr], room.Id)
+
+	o.HotRoomQueue = append(o.HotRoomQueue, room.Id)
+	relay.Log.Printf(defs.INFO, "start room ok, new available room :%s", roomIdHexStr)
 }
 
 func (o *OpenRelay) Heatbeat(relay *defs.RoomInstance, roomId [16]byte) {
 	var err error
 
+	roomIdHexStr := defs.GuidFormatString(roomId)
 	interval := time.Duration(500)
 	timeout := int64(o.HeatbeatTimeout)
-	for {
+	relay.Log.Println(defs.VERBOSE, "start heatbeat: ", roomIdHexStr)
+	for relay.Status == defs.LISTEN {
 		for k, v := range relay.Hbs {
 			if v+timeout < time.Now().Unix() {
 				g := relay.Uids[k]
@@ -916,7 +945,7 @@ func (o *OpenRelay) Heatbeat(relay *defs.RoomInstance, roomId [16]byte) {
 				relay.Log.Printf(defs.INFO, "-> timeout force logout %s %d", hex.EncodeToString([]byte(g)), k)
 
 				if len(relay.Guids) == 0 {
-					o.Clean(relay, roomId)
+					o.Close(relay, roomId)
 				}
 
 			}
@@ -924,4 +953,6 @@ func (o *OpenRelay) Heatbeat(relay *defs.RoomInstance, roomId [16]byte) {
 		}
 		time.Sleep(interval * time.Millisecond) // return context
 	}
+	relay.Log.Println(defs.VERBOSE, "exit heatbeat: ", roomIdHexStr)
+	relay.ToClosed()
 }

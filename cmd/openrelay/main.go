@@ -100,6 +100,7 @@ func main() {
 
 	go o.ConsoleServ()
 	go o.EntryServ()
+	go o.CleanServ()
 
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt)

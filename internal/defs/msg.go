@@ -96,6 +96,13 @@ const (
 	BLOCK_ROOM_AND_QUEUE_MAX        // Economy join retry
 )
 
+type RelayStatus uint8
+const (
+	LISTEN RelayStatus = iota
+	CLOSING
+	CLOSED
+)
+
 type ABLoop string
 
 const (
@@ -121,6 +128,7 @@ type Header struct {
 type RoomParameter struct {
 	Id            [16]byte
 	Name          string
+	Index         int
 	Filter        string
 	Capacity      uint16
 	QueuingPolicy byte
@@ -144,9 +152,22 @@ type RoomInstance struct {
 	LastUid       PlayerId
 	MasterUid     PlayerId
 	MasterUidNeed bool
+	Status        RelayStatus
 	Log           *Logger
 	Rec           *Recorder
 	ABLoop        ABLoop
+}
+
+func (r *RoomInstance) ToListen(){
+	r.Status = LISTEN
+}
+
+func (r *RoomInstance) ToClose(){
+	r.Status = CLOSING
+}
+
+func (r *RoomInstance) ToClosed() {
+	r.Status = CLOSED
 }
 
 type RoomResponse struct {
