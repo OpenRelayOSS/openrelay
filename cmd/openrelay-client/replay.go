@@ -16,7 +16,10 @@
 package relay
 
 import (
+	"bytes"
 	"bufio"
+	"encoding/hex"
+	"encoding/binary"
 	"crypto/rand"
 	"errors"
 	"flag"
@@ -28,6 +31,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"openrelay/internal/defs"
 )
 
 type replay struct {
@@ -72,7 +76,7 @@ func param() {
 	flag.StringVar(&destDealSchema, "dschm", "tcp://", "destination dealer schema tcp or udp")
 	flag.StringVar(&destDealPort, "dport", ":7001", "destination dealer port")
 	flag.StringVar(&destSubSchema, "sschm", "tcp://", "destination subscribe schema tcp or udp")
-	flag.StringVar(&destSubPort, "sport", ":7000", "destination subscribe port")
+	flag.StringVar(&destSubPort, "sport", ":7002", "destination subscribe port")
 	flag.IntVar(&errorThreshold, "errorthreshold", 0, "error Threshold counter")
 	flag.IntVar(&startId, "startid", 10, "id start num")
 	flag.IntVar(&wakeCount, "wake", 1, "wake client")
@@ -87,16 +91,22 @@ func main() {
 	replaysB = make([]replay, 0, 3000)
 	replayFile, err := os.Open(filePath)
 	if err != nil {
-		fmt.Println("error")
+		fmt.Println("error "+err.Error())
+		os.Exit(1)
 	}
 	defer replayFile.Close()
 	scanner := bufio.NewScanner(replayFile)
 	for scanner.Scan() {
 		rep := replay{}
-		line := strings.Split(scanner.Text(), ",")
+		line := strings.Split(scanner.Text(), "\t")
 		rep.Tick = 0
 		//TODO rep.Frame = load byte load byte from hex string
-		//rep.Frame = strings.Split(line[2], ",")
+		msg, err := hex.DecodeString(line[3])
+		if err != nil {
+			fmt.Println("error "+err.Error())
+			os.Exit(1)
+		}
+		rep.Frame = []byte(msg)
 		if line[1] == "A" {
 			replaysA = append(replaysA, rep)
 		} else if line[1] == "B" {
@@ -129,20 +139,44 @@ func GetNextAFrame(index int, uid int) ([]byte, error) {
 	if len(replaysA)-1 < index {
 		return []byte{}, errors.New("out of index")
 	}
-	//rep := replaysA[index]
-	var msg []byte
-	//msg := rep.Frame[0] + "," + rep.Frame[1] + "," + rep.Frame[2] + "," + rep.Frame[3] + "," + rep.Frame[4] + "," + rep.Frame[5] + "," + rep.Frame[6] + "," + rep.Frame[7] + "," + strconv.Itoa(uid) + "," + rep.Frame[9] + "," + rep.Frame[10] + "," + rep.Frame[11]
-	return []byte(msg), nil
+	rewritedMsg, err := rewriteSrcUid(replaysA[index].Frame, defs.PlayerId(uid))
+	if err != nil {
+		return nil, err
+	}
+	return rewritedMsg, nil
 }
 
 func GetNextBFrame(index int, uid int) ([]byte, error) {
 	if len(replaysB)-1 < index {
 		return []byte{}, errors.New("out of index")
 	}
-	//rep := replaysB[index]
-	var msg []byte
+	rewritedMsg, err := rewriteSrcUid(replaysB[index].Frame, defs.PlayerId(uid))
+	if err != nil {
+		return nil, err
+	}
+	return rewritedMsg, nil
+}
+
+func rewriteSrcUid(record []byte, uid defs.PlayerId) ([]byte, error) {
+	var err error
+	readBuf := bytes.NewReader([]byte(record))
+	header := defs.Header{}
+	err = binary.Read(readBuf, binary.LittleEndian, &header)
+	if err != nil {
+		return nil, err
+        }
+	header.SrcUid = uid
+	writeBuf := new(bytes.Buffer)
+	err = binary.Write(writeBuf, binary.LittleEndian, header)
+	if err != nil {
+		return nil, err
+	}
+	err = binary.Write(writeBuf, binary.LittleEndian, record[defs.HeaderBytesLen:])
+	if err != nil {
+		return nil, err
+	}
 	//msg := rep.Frame[0] + "," + rep.Frame[1] + "," + rep.Frame[2] + "," + rep.Frame[3] + "," + rep.Frame[4] + "," + rep.Frame[5] + "," + rep.Frame[6] + "," + rep.Frame[7] + "," + strconv.Itoa(uid) + "," + rep.Frame[9] + "," + rep.Frame[10] + "," + rep.Frame[11]
-	return []byte(msg), nil
+	return writeBuf.Bytes(), nil
 }
 
 func Send(cli *client) {
@@ -213,6 +247,26 @@ func Recv(cli *client) {
 		}
 		runtime.Gosched()
 	}
+}
+
+func createJoinMessage() ([]byte, error) {
+	var err error
+	joinSeed := createUUID()
+	header := defs.Header{}
+	// TODO setup header 
+	header.SrcUid = 0
+	header.ContentLen = uint16(len(joinSeed))
+	writeBuf := new(bytes.Buffer)
+	err = binary.Write(writeBuf, binary.LittleEndian, header)
+	if err != nil {
+		return nil, err
+	}
+	err = binary.Write(writeBuf, binary.LittleEndian, joinSeed)
+	if err != nil {
+		return nil, err
+	}
+
+	return writeBuf.Bytes(), nil
 }
 
 func createUUID() string {

@@ -251,7 +251,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			}
 			relay.Log.Printf(defs.VVERBOSE, "-> relay %d '%s' ", header.RelayCode, hex.EncodeToString(request[1]))
 			if o.RecMode > 0 && o.RecMode == int(header.SrcUid) {
-				//relay.Rec.Printf("relay.LastUid: %d", relay.LastUid)
+				relay.Rec.Printf("relay.LastUid: %d", relay.LastUid)
 				relay.Rec.Printf("%d\t%s\t%d\t%s", time.Now().UnixNano(), relay.ABLoop, header.RelayCode, hex.EncodeToString(request[1]))
 			}
 

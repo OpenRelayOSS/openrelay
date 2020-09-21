@@ -124,6 +124,7 @@ type Header struct {
 	ContentLen  uint16
 	_           [2]byte // 4byte
 }
+const HeaderBytesLen = 16
 
 type RoomParameter struct {
 	Id            [16]byte
