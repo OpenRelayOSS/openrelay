@@ -22,6 +22,7 @@ NEED_DOCKER_BUILD=1
 fi
 
 source ~/.bash_profile
+echo `which go`
 HOME_PATH=${HOME}
 ENTRY_POINT_MAIN=${REPO_ROOT_PATH}/cmd/openrelay/main.go
 ENTRY_POINT_CLIENT=${REPO_ROOT_PATH}/cmd/openrelay-client/replay.go
@@ -49,14 +50,14 @@ if [[ -n "${OR_STRIP}" ]]; then
 fi
 
 # clean directories
-rm -rf ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_MAIN}
-rm -rf ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_CLIENT}
-rm -rf ${REPO_ROOT_PATH}/pkg/*
-rm -rf ${SOURCES_PATH}/*
-rm -rf ${ORIGIN_RPMS_PATH}
-rm -rf ${HOME}/${RPMBUILD}/SPECS/*.spec
-rm -rf ${HOME}/${RPMBUILD}/SOURCES/*.tar.gz
-rm -rf ${HOME}/${RPMBUILD}/RPMS/${IMAGE_ARCH}
+sudo rm -rf ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_MAIN}
+sudo rm -rf ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_CLIENT}
+sudo rm -rf ${REPO_ROOT_PATH}/pkg/*
+sudo rm -rf ${SOURCES_PATH}/*
+sudo rm -rf ${ORIGIN_RPMS_PATH}
+sudo rm -rf ${HOME}/${RPMBUILD}/SPECS/*.spec
+sudo rm -rf ${HOME}/${RPMBUILD}/SOURCES/*.tar.gz
+sudo rm -rf ${HOME}/${RPMBUILD}/RPMS/${IMAGE_ARCH}
 
 # preprocess here.
 

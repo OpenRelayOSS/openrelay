@@ -524,6 +524,7 @@ func (o *OpenRelay) JoinPrepareResponse(relay *defs.RoomInstance, joinSeed []byt
 	joinedUids := []defs.PlayerId{}
 	for k, _ := range relay.Uids {
 		joinedUids = append(joinedUids, k)
+		log.Println(defs.VERBOSE, "joined uid ", k)
 	}
 	assginUid := relay.LastUid
 	relay.Guids[string(joinSeed)] = relay.LastUid

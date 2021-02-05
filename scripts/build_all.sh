@@ -21,6 +21,6 @@ ${REPO_ROOT_PATH}/scripts/build_extlib.sh || die "build extlib failed."
 
 ${REPO_ROOT_PATH}/scripts/build_img.sh || die "build image failed."
 
-sudo ${REPO_ROOT_PATH}/scripts/docker_compose.sh build || die "docker-compose failed."
+${REPO_ROOT_PATH}/scripts/docker_compose.sh build || die "docker-compose failed."
 
 cd -
