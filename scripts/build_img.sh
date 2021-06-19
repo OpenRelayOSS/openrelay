@@ -25,7 +25,7 @@ source ~/.bash_profile
 echo `which go`
 HOME_PATH=${HOME}
 ENTRY_POINT_MAIN=${REPO_ROOT_PATH}/cmd/openrelay/main.go
-ENTRY_POINT_CLIENT=${REPO_ROOT_PATH}/cmd/openrelay-client/replay.go
+ENTRY_POINT_CLIENT=${REPO_ROOT_PATH}/cmd/openrelay-client/main.go
 GOCC=go
 GOXC=gox
 GIT_COMMIT=$(git rev-parse --short HEAD)
@@ -70,6 +70,7 @@ mkdir -p ${SOURCES_PATH}/${IMAGE_FULLNAME}
 cp ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_MAIN} ${SOURCES_PATH}/${IMAGE_FULLNAME}/
 cp ${REPO_ROOT_PATH}/bin/${IMAGE_NAME_CLIENT} ${SOURCES_PATH}/${IMAGE_FULLNAME}/
 cp ${REPO_ROOT_PATH}/configs/${IMAGE_NAME_MAIN}-boot.sh ${SOURCES_PATH}/${IMAGE_FULLNAME}/
+cp ${REPO_ROOT_PATH}/configs/${IMAGE_NAME_CLIENT}-boot.sh ${SOURCES_PATH}/${IMAGE_FULLNAME}/
 cp ${REPO_ROOT_PATH}/configs/${IMAGE_NAME_MAIN}.service ${SOURCES_PATH}/${IMAGE_FULLNAME}/
 cp ${REPO_ROOT_PATH}/configs/${IMAGE_NAME_MAIN}.env ${SOURCES_PATH}/${IMAGE_FULLNAME}/
 cp ${REPO_ROOT_PATH}/extlib/libczmq.so.*.*.* ${SOURCES_PATH}/${IMAGE_FULLNAME}/

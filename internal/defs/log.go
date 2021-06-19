@@ -71,6 +71,14 @@ func NewLogger(lv LogLevel, dir string, filename string, needStdout bool) (*Logg
 	return &Logger{logger, lv, "", file}, nil
 }
 
+func (l *Logger) PrintRaw(lv LogLevel, rawString string) {
+	if lv <= l.logVolume {
+		l.logger.SetFlags(0)
+		l.logger.Output(stackDepth, rawString)
+		l.logger.SetFlags(log.LstdFlags|log.Lmicroseconds)
+	}
+}
+
 func (l *Logger) Printf(lv LogLevel, format string, v ...interface{}) {
 	if lv <= l.logVolume {
 		l.logger.Output(stackDepth, levelToStr(lv) + l.prefix+ " | " + fmt.Sprintf(format, v...))

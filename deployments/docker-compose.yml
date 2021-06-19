@@ -4,7 +4,9 @@ openrelay:
   container_name: "openrelay"
   build: ..
   dockerfile: deployments/Dockerfile
-
+  hostname: openrelay
+  volumes:
+   - /var/lib/docker/data/or/var/log/openrelay:/var/log/openrelay:rw
   ports:
     - "7000:7000"
     - "7001:7001"
@@ -14,3 +16,4 @@ openrelay:
     - "7005:7005"
     - "7006:7006"
     - "8000:8000"
+  entrypoint: "/usr/local/openrelay/bin/openrelay-boot.sh -listen_ipv4 192.168.1.31 -log 4 -repmode true"

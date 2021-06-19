@@ -197,7 +197,23 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 
 	header := defs.Header{}
 	for relay.Status == defs.LISTEN {
-		request, err := relay.Router.RecvMessage()
+		//request, err := relay.Router.RecvMessage()
+		var request [][]byte
+		if relay.Router.Pollin() {
+			for {
+				frame, flag, err := relay.Router.RecvFrame()
+				if err != nil {
+					break
+				}
+				request = append(request, frame)
+				if flag != goczmq.FlagMore {
+					break
+				}
+			}
+		} else {
+			relay.Log.PrintRaw(defs.VVERBOSE, ".")
+			continue
+		}
 		if err != nil {
 			relay.Log.Println(defs.NOTICE, "relay.Router recv failed. ", err)
 			continue
@@ -213,6 +229,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 		err = binary.Read(readBuf, binary.LittleEndian, &header)
 		if err != nil {
 			relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
+			time.Sleep(0 * time.Second) // return context
 			continue
 		}
 
@@ -251,7 +268,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			}
 			relay.Log.Printf(defs.VVERBOSE, "-> relay %d '%s' ", header.RelayCode, hex.EncodeToString(request[1]))
 			if o.RecMode > 0 && o.RecMode == int(header.SrcUid) {
-				relay.Rec.Printf("relay.LastUid: %d", relay.LastUid)
+				//relay.Log.Println(defs.NOTICE, "relay.LastUid: ", relay.LastUid)
 				relay.Rec.Printf("%d\t%s\t%d\t%s", time.Now().UnixNano(), relay.ABLoop, header.RelayCode, hex.EncodeToString(request[1]))
 			}
 
@@ -370,7 +387,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			relay.Log.Printf(defs.VVERBOSE, "-> relay '%s' ", hex.EncodeToString(writeBuf.Bytes()))
 
 			if o.RecMode == int(relay.LastUid) {
-				relay.Rec.Printf("relay.LastUid: %d", relay.LastUid)
+				//relay.Rec.Printf("relay.LastUid: %d", relay.LastUid)
 				relay.Rec.Printf("%d\t%s\t%d\t%s", time.Now().UnixNano(), relay.ABLoop, header.RelayCode, hex.EncodeToString(request[1]))
 			}
 
@@ -762,8 +779,8 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 				relay.Log.Println(defs.NOTICE, "read joinseed failed. ", err)
 				continue
 			}
-			assginUid := relay.LastUid
-			//relay.MasterUid := relay.MasterUid
+			assginUid := header.SrcUid
+			relay.LastUid = assginUid
 			joinedUids := []defs.PlayerId{}
 			for k, _ := range relay.Uids {
 				joinedUids = append(joinedUids, k)
@@ -800,7 +817,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			}
 			relay.Log.Printf(defs.VVERBOSE, "-> relay '%s' ", hex.EncodeToString(request[1]))
 			if o.RecMode == int(relay.LastUid) {
-				relay.Rec.Printf("relay.LastUid: %d", relay.LastUid)
+				//relay.Rec.Printf("relay.LastUid: %d", relay.LastUid)
 				relay.Rec.Printf("%d\t%s\t%d\t%s", time.Now().UnixNano(), relay.ABLoop, header.RelayCode, hex.EncodeToString(request[1]))
 			}
 
@@ -816,8 +833,8 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 		time.Sleep(0 * time.Second) // return context
 	}
 
-	relay.Log.Println(defs.VERBOSE, "exit relay id:", roomIdHexStr)
 	relay.ToClosed()
+	relay.Log.Println(defs.VERBOSE, "exit relay id:", roomIdHexStr)
 }
 
 func (o *OpenRelay) Close(relay *defs.RoomInstance, roomId [16]byte) {
@@ -830,8 +847,6 @@ func (o *OpenRelay) Close(relay *defs.RoomInstance, roomId [16]byte) {
 	relay.ToClose()
 
 	o.ColdRoomQueue = append(o.ColdRoomQueue, roomId)
-	relay.Log.Rotate()
-	relay.Log.Printf(defs.INFO, "close room ok, id:%s", roomIdHexStr)
 }
 
 func (o *OpenRelay) Recycle(coldIndex int) {
@@ -839,10 +854,16 @@ func (o *OpenRelay) Recycle(coldIndex int) {
 	roomIdHexStr := defs.GuidFormatString(roomId)
 	room := o.RoomQueue[roomIdHexStr]
 	relay := o.RelayQueue[roomIdHexStr]
-	relay.Log.Printf(defs.INFO, "remove room ok, index:%d id:%s", room.Index, roomIdHexStr)
-	delete(o.RoomQueue, roomIdHexStr)
-	delete(o.RelayQueue, roomIdHexStr)
-	o.Start(room.Index, room.StfDealPort, room.StfSubPort)
+	if relay.Status != defs.CLOSED {
+		relay.Log.Printf(defs.INFO, "closing room ... id:%s", roomIdHexStr)
+	} else {
+		relay.Log.Rotate()
+		relay.Log.Printf(defs.INFO, "close room ok, id:%s", roomIdHexStr)
+		relay.Log.Printf(defs.INFO, "remove room ok, index:%d id:%s", room.Index, roomIdHexStr)
+		delete(o.RoomQueue, roomIdHexStr)
+		delete(o.RelayQueue, roomIdHexStr)
+		o.Start(room.Index, room.StfDealPort, room.StfSubPort)
+	}
 }
 
 func (o *OpenRelay) Start(index int, stfDealPort , stfSubPort uint16) {
@@ -954,5 +975,4 @@ func (o *OpenRelay) Heatbeat(relay *defs.RoomInstance, roomId [16]byte) {
 		time.Sleep(interval * time.Millisecond) // return context
 	}
 	relay.Log.Println(defs.VERBOSE, "exit heatbeat: ", roomIdHexStr)
-	relay.ToClosed()
 }

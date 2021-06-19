@@ -13,7 +13,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1335  USA */
 
-package relay
+package main
 
 import (
 	"bytes"
@@ -81,7 +81,7 @@ func param() {
 	flag.IntVar(&startId, "startid", 10, "id start num")
 	flag.IntVar(&wakeCount, "wake", 1, "wake client")
 	flag.IntVar(&wakeIntval, "wakeint", 30000, "wake client interval (milliseconds)")
-	flag.StringVar(&filePath, "filepath", "./replay.log", "replay file fullpath")
+	flag.StringVar(&filePath, "filepath", "/var/log/openrelay/replay.log", "replay file fullpath")
 	flag.Parse()
 }
 
@@ -100,7 +100,6 @@ func main() {
 		rep := replay{}
 		line := strings.Split(scanner.Text(), "\t")
 		rep.Tick = 0
-		//TODO rep.Frame = load byte load byte from hex string
 		msg, err := hex.DecodeString(line[3])
 		if err != nil {
 			fmt.Println("error "+err.Error())
@@ -175,7 +174,6 @@ func rewriteSrcUid(record []byte, uid defs.PlayerId) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	//msg := rep.Frame[0] + "," + rep.Frame[1] + "," + rep.Frame[2] + "," + rep.Frame[3] + "," + rep.Frame[4] + "," + rep.Frame[5] + "," + rep.Frame[6] + "," + rep.Frame[7] + "," + strconv.Itoa(uid) + "," + rep.Frame[9] + "," + rep.Frame[10] + "," + rep.Frame[11]
 	return writeBuf.Bytes(), nil
 }
 
@@ -187,9 +185,35 @@ func Send(cli *client) {
 	}
 	defer cli.Deal.Destroy()
 	var frame []byte
+	var joinFrame []byte
 	var isABloop = false
 
-	cli.Deal.SendFrame([]byte("0,0,0,0,0,0,0,0-,1,16,0,"+createUUID()), goczmq.FlagNone)
+	joinFrame, err = createReplayJoinMessage(cli.Id)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+        readBuf := bytes.NewReader(joinFrame)
+        header := defs.Header{}
+        err = binary.Read(readBuf, binary.LittleEndian, &header)
+        if err != nil {
+		log.Fatal(err)
+        }
+
+        if header.Ver != defs.FrameVersion {
+        }
+
+        log.Printf("header.Ver: '%d' ", header.Ver)
+        log.Printf("header.RelayCode: '%d' ", header.RelayCode)
+        log.Printf("header.ContentCode: '%d' ", header.ContentCode)
+        log.Printf("header.DestCode: '%d' ", header.DestCode)
+        log.Printf("header.Mask: '%d' ", header.Mask)
+        log.Printf("header.SrcUid: '%d' ", header.SrcUid)
+        log.Printf("header.SrcOid: '%d' ", header.SrcOid)
+        log.Printf("header.DestLen: '%d' ", header.DestLen)
+        log.Printf("header.ContentLen: '%d' ", header.ContentLen)
+
+	cli.Deal.SendFrame(joinFrame, goczmq.FlagNone)
 	time.Sleep(time.Duration(3) * time.Second)
 
 	for {
@@ -212,7 +236,7 @@ func Send(cli *client) {
 			log.Fatal(err)
 		}
 		if logLevel > 0 {
-			log.Printf("<- %s\n", string(frame))
+			log.Printf("<- %s\n", hex.EncodeToString(frame))
 			log.Printf("# id:%d A:%d B:%d\n", cli.Id, cli.PosA, cli.PosB)
 		}
 		time.Sleep(time.Duration(100) * time.Millisecond)
@@ -249,13 +273,21 @@ func Recv(cli *client) {
 	}
 }
 
-func createJoinMessage() ([]byte, error) {
+func createReplayJoinMessage(id int) ([]byte, error) {
 	var err error
-	joinSeed := createUUID()
+	joinSeed, err := newUUID()
+	if err != nil {
+		return nil, err
+	}
 	header := defs.Header{}
-	// TODO setup header 
-	header.SrcUid = 0
-	header.ContentLen = uint16(len(joinSeed))
+	header.Ver = defs.FrameVersion
+	header.RelayCode = defs.REPLAY_JOIN
+	header.ContentCode = 0
+	header.DestCode = defs.ALL
+	header.Mask = 0
+	header.DestLen = 0
+	header.SrcUid = defs.PlayerId(id)
+	header.ContentLen = 16 // size of uint16
 	writeBuf := new(bytes.Buffer)
 	err = binary.Write(writeBuf, binary.LittleEndian, header)
 	if err != nil {
@@ -280,4 +312,17 @@ func createUUID() string {
 	// version 4 (pseudo-random); see section 4.1.3
 	uuid[6] = uuid[6]&^0xf0 | 0x40
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:])
+}
+
+func newUUID() ([]byte, error) {
+	uuid := make([]byte, 16)
+	n, err := io.ReadFull(rand.Reader, uuid)
+	if n != len(uuid) || err != nil {
+		return uuid, err
+	}
+	// variant bits; see section 4.1.1
+	uuid[8] = uuid[8]&^0xc0 | 0x80
+	// version 4 (pseudo-random); see section 4.1.3
+	uuid[6] = uuid[6]&^0xf0 | 0x40
+	return uuid, nil
 }
