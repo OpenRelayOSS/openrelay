@@ -1,0 +1,9 @@
+# openrelay-replay
+
+replay:
+  container_name: "replay"
+  build: ..
+  dockerfile: deployments/Dockerfile
+  volumes:
+   - /var/lib/docker/data/or/var/log/openrelay:/var/log/openrelay:rw
+  entrypoint: "/usr/local/openrelay/bin/replay-boot.sh -filepath /var/log/openrelay/replay.log -addr 192.168.1.31 -startid 2 -wake 10 -wakeint 30000 -log 1"
