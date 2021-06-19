@@ -197,23 +197,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 
 	header := defs.Header{}
 	for relay.Status == defs.LISTEN {
-		//request, err := relay.Router.RecvMessage()
-		var request [][]byte
-		if relay.Router.Pollin() {
-			for {
-				frame, flag, err := relay.Router.RecvFrame()
-				if err != nil {
-					break
-				}
-				request = append(request, frame)
-				if flag != goczmq.FlagMore {
-					break
-				}
-			}
-		} else {
-			relay.Log.PrintRaw(defs.VVERBOSE, ".")
-			continue
-		}
+		request, err := relay.Router.RecvMessage()
 		if err != nil {
 			relay.Log.Println(defs.NOTICE, "relay.Router recv failed. ", err)
 			continue
