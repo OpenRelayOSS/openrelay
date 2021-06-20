@@ -376,6 +376,12 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			}
 
 		case defs.LEAVE:
+			if len(relay.Guids) == 0 {
+				relay.Log.Println(defs.NOTICE, "leave force ok.")
+				o.Close(relay, room.Id)
+				continue
+			}
+
 			joinSeed := make([]byte, header.ContentLen)
 			err = binary.Read(readBuf, binary.LittleEndian, &joinSeed)
 			if err != nil {
@@ -830,7 +836,36 @@ func (o *OpenRelay) Close(relay *defs.RoomInstance, roomId [16]byte) {
 	delete(o.JoinAllPollingQueue, roomIdHexStr)
 	relay.ToClose()
 
+
 	o.ColdRoomQueue = append(o.ColdRoomQueue, roomId)
+}
+
+func (o *OpenRelay) LeaveForce(dealPort int) error {
+	var err error
+	//deal, err := goczmq.NewDealer(o.StfDealProto + "://" + o.StfDealHost + ":" + strconv.Itoa(dealPort))
+	deal, err := goczmq.NewDealer(o.StfDealProto + "://127.0.0.1:" + strconv.Itoa(dealPort))
+	if err != nil {
+		return err
+	}
+	defer deal.Destroy()
+	header := defs.Header{}
+	header.Ver = defs.FrameVersion
+	header.RelayCode = defs.LEAVE
+	header.ContentCode = 0
+	header.DestCode = defs.ALL
+	header.Mask = 0
+	header.DestLen = 0
+	header.SrcUid = defs.PlayerId(0)
+	header.ContentLen = 0
+	writeBuf := new(bytes.Buffer)
+	err = binary.Write(writeBuf, binary.LittleEndian, header)
+	if err != nil {
+		return err
+	}
+	deal.SendFrame(writeBuf.Bytes(), goczmq.FlagNone)
+	time.Sleep(time.Duration(3) * time.Second)
+
+	return nil
 }
 
 func (o *OpenRelay) Recycle(coldIndex int) {
@@ -950,7 +985,11 @@ func (o *OpenRelay) Heatbeat(relay *defs.RoomInstance, roomId [16]byte) {
 				relay.Log.Printf(defs.INFO, "-> timeout force logout %s %d", hex.EncodeToString([]byte(g)), k)
 
 				if len(relay.Guids) == 0 {
-					o.Close(relay, roomId)
+					room := o.RoomQueue[roomIdHexStr]
+					err = o.LeaveForce(int(room.StfDealPort))
+					if err != nil {
+						relay.Log.Println(defs.NOTICE, "leave force send failed. ", err)
+					}
 				}
 
 			}
