@@ -9,8 +9,8 @@ jobs:
       - run: ./scripts/setup_develop.sh
       - run: ./scripts/build_all.sh
       - store_artifacts:
-          path: ./build/rpms/RPMS/x86_64/openrelay-0.9-8.x86_64.rpm
-          destination: openrelay-0.9-8.x86_64.rpm
+          path: ./build/rpms/RPMS/x86_64/openrelay-0.9-9.x86_64.rpm
+          destination: openrelay-0.9-9.x86_64.rpm
 workflows:
   version: 2
   build:
