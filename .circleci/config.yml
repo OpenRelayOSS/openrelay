@@ -1,9 +1,9 @@
-version: 2
+version: 2.1
 jobs:
   build-image:
+    machine: true
     docker:
       - image: docker.io/centos
-    machine: true
     steps:
       - checkout
       - run: dnf install -y sudo
