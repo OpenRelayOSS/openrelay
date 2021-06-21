@@ -4,9 +4,10 @@ jobs:
     docker:
       - image: docker.io/centos
     steps:
-      - setup_remote_docker:
-        version: 19.03.13
       - checkout
+      - setup_remote_docker:
+        version: 20.10.6
+        docker_layer_caching: true
       - run: dnf install -y sudo
       - run: ./scripts/setup_develop.sh
       - run: ./scripts/build_all.sh
