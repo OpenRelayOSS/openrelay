@@ -371,7 +371,6 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			relay.Log.Printf(defs.VVERBOSE, "-> relay '%s' ", hex.EncodeToString(writeBuf.Bytes()))
 
 			if o.RecMode == int(relay.LastUid) {
-				//relay.Rec.Printf("relay.LastUid: %d", relay.LastUid)
 				relay.Rec.Printf("%d\t%s\t%d\t%s", time.Now().UnixNano(), relay.ABLoop, header.RelayCode, hex.EncodeToString(request[1]))
 			}
 
@@ -426,6 +425,9 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 				continue
 			}
 			relay.Log.Println(defs.INFO, "-> leave ", srcUid)
+			if o.RecMode > 0 && o.RecMode == int(header.SrcUid) {
+				relay.Rec.Printf("%d\t%s\t%d\t%s", time.Now().UnixNano(), relay.ABLoop, header.RelayCode, hex.EncodeToString(request[1]))
+			}
 
 		case defs.TIMEOUT:
 		case defs.REJOIN:
@@ -523,6 +525,9 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "set legacy map %s \n", relay.Props[defs.PropKeyLegacy])
+			if o.RecMode > 0 && o.RecMode == int(header.SrcUid) {
+				relay.Rec.Printf("%d\t%s\t%d\t%s", time.Now().UnixNano(), relay.ABLoop, header.RelayCode, hex.EncodeToString(request[1]))
+			}
 
 		case defs.GET_LEGACY_MAP:
 			if _, ok := relay.Hbs[header.SrcUid]; !ok {
@@ -807,7 +812,6 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			}
 			relay.Log.Printf(defs.VVERBOSE, "-> relay '%s' ", hex.EncodeToString(request[1]))
 			if o.RecMode == int(relay.LastUid) {
-				//relay.Rec.Printf("relay.LastUid: %d", relay.LastUid)
 				relay.Rec.Printf("%d\t%s\t%d\t%s", time.Now().UnixNano(), relay.ABLoop, header.RelayCode, hex.EncodeToString(request[1]))
 			}
 
