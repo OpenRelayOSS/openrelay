@@ -16,22 +16,23 @@
 package main
 
 import (
-	"bytes"
 	"bufio"
-	"encoding/hex"
-	"encoding/binary"
+	"bytes"
 	"crypto/rand"
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
 	"github.com/zeromq/goczmq"
 	"io"
 	"log"
+	"openrelay/internal/defs"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
-	"openrelay/internal/defs"
 )
 
 type replay struct {
@@ -91,7 +92,7 @@ func main() {
 	replaysB = make([]replay, 0, 3000)
 	replayFile, err := os.Open(filePath)
 	if err != nil {
-		fmt.Println("error "+err.Error())
+		fmt.Println("error " + err.Error())
 		os.Exit(1)
 	}
 	defer replayFile.Close()
@@ -102,7 +103,7 @@ func main() {
 		rep.Tick = 0
 		msg, err := hex.DecodeString(line[3])
 		if err != nil {
-			fmt.Println("error "+err.Error())
+			fmt.Println("error " + err.Error())
 			os.Exit(1)
 		}
 		rep.Frame = []byte(msg)
@@ -138,7 +139,7 @@ func GetNextAFrame(index int, uid int) ([]byte, error) {
 	if len(replaysA)-1 < index {
 		return []byte{}, errors.New("out of index")
 	}
-	rewritedMsg, err := rewriteSrcUid(replaysA[index].Frame, defs.PlayerId(uid))
+	rewritedMsg, err := rewriteFrame(replaysA[index].Frame, defs.PlayerId(uid))
 	if err != nil {
 		return nil, err
 	}
@@ -149,31 +150,114 @@ func GetNextBFrame(index int, uid int) ([]byte, error) {
 	if len(replaysB)-1 < index {
 		return []byte{}, errors.New("out of index")
 	}
-	rewritedMsg, err := rewriteSrcUid(replaysB[index].Frame, defs.PlayerId(uid))
+	rewritedMsg, err := rewriteFrame(replaysB[index].Frame, defs.PlayerId(uid))
 	if err != nil {
 		return nil, err
 	}
 	return rewritedMsg, nil
 }
 
-func rewriteSrcUid(record []byte, uid defs.PlayerId) ([]byte, error) {
+func rewriteFrame(record []byte, uid defs.PlayerId) ([]byte, error) {
 	var err error
 	readBuf := bytes.NewReader([]byte(record))
 	header := defs.Header{}
 	err = binary.Read(readBuf, binary.LittleEndian, &header)
 	if err != nil {
 		return nil, err
-        }
+	}
 	header.SrcUid = uid
 	writeBuf := new(bytes.Buffer)
 	err = binary.Write(writeBuf, binary.LittleEndian, header)
 	if err != nil {
 		return nil, err
 	}
-	err = binary.Write(writeBuf, binary.LittleEndian, record[defs.HeaderBytesLen:])
-	if err != nil {
-		return nil, err
+	switch header.RelayCode {
+	case defs.RELAY, defs.RELAY_STREAM, defs.UNITY_CDK_RELAY, defs.UE4_CDK_RELAY:
+		err = binary.Write(writeBuf, binary.LittleEndian, record[defs.HeaderBytesLen:])
+		if err != nil {
+			return nil, err
+		}
+
+	case defs.SET_LEGACY_MAP:
+
+		var keysLen uint16
+		err = binary.Read(readBuf, binary.LittleEndian, &keysLen)
+		if err != nil {
+			return nil, err
+		}
+		var propsLen uint16
+		err = binary.Read(readBuf, binary.LittleEndian, &propsLen)
+		if err != nil {
+			return nil, err
+		}
+		keysBytes := make([]byte, keysLen)
+		err = binary.Read(readBuf, binary.LittleEndian, &keysBytes)
+		if err != nil {
+			return nil, err
+		}
+		//read adjust alignment at keysLen
+		var alignmentLen = keysLen % 4
+		if alignmentLen != 0 {
+			var alignment = make([]byte, alignmentLen)
+			err = binary.Read(readBuf, binary.LittleEndian, &alignment)
+			if err != nil {
+				return nil, err
+			}
+		}
+		propsBytes := make([]byte, propsLen)
+		err = binary.Read(readBuf, binary.LittleEndian, &propsBytes)
+		if err != nil {
+			return nil, err
+		}
+		// parse is color ?
+		// parse is name ?
+
+		//msg, err := hex.DecodeString(line[3])
+		//hex.EncodeToString(frame)
+		colorKey := strconv.Itoa(int(uid)) + "_Color"
+		nameKey := strconv.Itoa(int(uid)) + "_NickName"
+		colorValue := "1"
+		nameValue := "1"
+		keysBytes = []byte(colorKey + defs.RowSeparator + nameKey)
+		keysLen = uint16(len(keysBytes))
+		propsBytes = []byte(colorValue + defs.RowSeparator + nameValue)
+		propsLen = uint16(len(propsBytes))
+		err = binary.Write(writeBuf, binary.LittleEndian, keysLen)
+		if err != nil {
+			return nil, err
+		}
+		err = binary.Write(writeBuf, binary.LittleEndian, propsLen)
+		if err != nil {
+			return nil, err
+		}
+		err = binary.Write(writeBuf, binary.LittleEndian, keysBytes)
+		if err != nil {
+			return nil, err
+		}
+		//write adjust alignment at keysLen.
+		alignmentLen = keysLen % 4
+		if alignmentLen != 0 {
+			alignment := make([]byte, alignmentLen)
+			err = binary.Write(writeBuf, binary.LittleEndian, alignment)
+			if err != nil {
+				return nil, err
+			}
+		}
+		propsBytes = make([]byte, propsLen)
+		err = binary.Write(writeBuf, binary.LittleEndian, propsBytes)
+		if err != nil {
+			return nil, err
+		}
+
+	case defs.JOIN:
+	case defs.TIMEOUT:
+	case defs.REJOIN:
+	case defs.REPLAY_JOIN:
+	case defs.CONNECT:
+	default:
+		log.Printf("invalid message code ... %d\n", header.RelayCode)
 	}
+
 	return writeBuf.Bytes(), nil
 }
 
@@ -193,25 +277,25 @@ func Send(cli *client) {
 		log.Fatal(err)
 	}
 
-        readBuf := bytes.NewReader(joinFrame)
-        header := defs.Header{}
-        err = binary.Read(readBuf, binary.LittleEndian, &header)
-        if err != nil {
+	readBuf := bytes.NewReader(joinFrame)
+	header := defs.Header{}
+	err = binary.Read(readBuf, binary.LittleEndian, &header)
+	if err != nil {
 		log.Fatal(err)
-        }
+	}
 
-        if header.Ver != defs.FrameVersion {
-        }
+	if header.Ver != defs.FrameVersion {
+	}
 
-        log.Printf("header.Ver: '%d' ", header.Ver)
-        log.Printf("header.RelayCode: '%d' ", header.RelayCode)
-        log.Printf("header.ContentCode: '%d' ", header.ContentCode)
-        log.Printf("header.DestCode: '%d' ", header.DestCode)
-        log.Printf("header.Mask: '%d' ", header.Mask)
-        log.Printf("header.SrcUid: '%d' ", header.SrcUid)
-        log.Printf("header.SrcOid: '%d' ", header.SrcOid)
-        log.Printf("header.DestLen: '%d' ", header.DestLen)
-        log.Printf("header.ContentLen: '%d' ", header.ContentLen)
+	log.Printf("header.Ver: '%d' ", header.Ver)
+	log.Printf("header.RelayCode: '%d' ", header.RelayCode)
+	log.Printf("header.ContentCode: '%d' ", header.ContentCode)
+	log.Printf("header.DestCode: '%d' ", header.DestCode)
+	log.Printf("header.Mask: '%d' ", header.Mask)
+	log.Printf("header.SrcUid: '%d' ", header.SrcUid)
+	log.Printf("header.SrcOid: '%d' ", header.SrcOid)
+	log.Printf("header.DestLen: '%d' ", header.DestLen)
+	log.Printf("header.ContentLen: '%d' ", header.ContentLen)
 
 	cli.Deal.SendFrame(joinFrame, goczmq.FlagNone)
 	time.Sleep(time.Duration(3) * time.Second)

@@ -42,6 +42,8 @@ const PropKeyLegacy = "LEGACY"
 const PropKeyLegacyLobby = "LEGACY_LOBBY"
 const PropKeyGenericPrefix = "OR_SHARE_PROP_"
 const PropKeyPlayerPrefix = "OR_PLAYER_PROP_"
+const RowSeparator = ";;"
+const ColSeparator = "::"
 
 func NewGuid() ([16]byte, error) {
 	uuid := [16]byte{}
@@ -59,3 +61,19 @@ func GuidFormatString(guid [16]byte) string {
 // TODO implement
 //func ValidatePorts(ports string) {
 //}
+
+//func ToBytes(Hashtable data) []byte {
+//        return nil
+//}
+
+func ToExplodeBytes(list []string) []byte {
+	return nil
+}
+
+func ToStringSlice(bytes []byte) []string {
+	var strs []string
+	for _, elem := range strings.Split(string(bytes), defs.RowSeparator) {
+		strs = append(strs, elem)
+	}
+	return strs
+}

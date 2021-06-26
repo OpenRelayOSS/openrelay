@@ -478,7 +478,18 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 				continue
 			}
-			relay.Props[defs.PropKeyLegacy] = properties
+			beforeProperties := relay.Props[defs.PropKeyLegacy]
+			var newProperties []byte
+			if beforeProperties == nil || len(beforeProperties) == 0 {
+				newProperties = make([]byte, int(propsLen))
+				newProperties = append(newProperties, properties...)
+			} else {
+				newProperties = make([]byte, len(beforeProperties)+len(defs.RowSeparator)+int(propsLen))
+				newProperties = append(newProperties, beforeProperties...)
+				beforeProperties = append(beforeProperties, []byte(defs.RowSeparator)...)
+				newProperties = append(newProperties, properties...)
+			}
+			relay.Props[defs.PropKeyLegacy] = newProperties
 			writeBuf := new(bytes.Buffer)
 			err = binary.Write(writeBuf, binary.LittleEndian, header)
 			if err != nil {
@@ -840,7 +851,6 @@ func (o *OpenRelay) Close(relay *defs.RoomInstance, roomId [16]byte) {
 	delete(o.JoinAllPollingQueue, roomIdHexStr)
 	relay.ToClose()
 
-
 	o.ColdRoomQueue = append(o.ColdRoomQueue, roomId)
 }
 
@@ -889,7 +899,7 @@ func (o *OpenRelay) Recycle(coldIndex int) {
 	}
 }
 
-func (o *OpenRelay) Start(index int, stfDealPort , stfSubPort uint16) {
+func (o *OpenRelay) Start(index int, stfDealPort, stfSubPort uint16) {
 	var err error
 
 	room := defs.RoomParameter{}
@@ -908,16 +918,16 @@ func (o *OpenRelay) Start(index int, stfDealPort , stfSubPort uint16) {
 		log.Panic("relay rec initialize faild. ", err)
 	}
 	relay := defs.RoomInstance{Log: relayLog, Rec: rec, ABLoop: defs.ALoop}
-        relay.MasterUidNeed = true
-        relay.Guids = make(map[string]defs.PlayerId)
-        relay.Uids = make(map[defs.PlayerId]string)
-        relay.Names = make(map[defs.PlayerId]string)
-        relay.Hbs = make(map[defs.PlayerId]int64)
-        relay.Props = make(map[string][]byte)
-        relay.LastUid = 0
-        relay.MasterUid = 0
-        relay.MasterUidNeed = true
-        relay.ABLoop = defs.ALoop
+	relay.MasterUidNeed = true
+	relay.Guids = make(map[string]defs.PlayerId)
+	relay.Uids = make(map[defs.PlayerId]string)
+	relay.Names = make(map[defs.PlayerId]string)
+	relay.Hbs = make(map[defs.PlayerId]int64)
+	relay.Props = make(map[string][]byte)
+	relay.LastUid = 0
+	relay.MasterUid = 0
+	relay.MasterUidNeed = true
+	relay.ABLoop = defs.ALoop
 	relay.ToListen()
 
 	room.StfDealPort = stfDealPort
