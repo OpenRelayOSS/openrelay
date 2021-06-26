@@ -18,6 +18,7 @@ package defs
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 )
 
 type PlayerId uint16
@@ -72,7 +73,7 @@ func ToExplodeBytes(list []string) []byte {
 
 func ToStringSlice(bytes []byte) []string {
 	var strs []string
-	for _, elem := range strings.Split(string(bytes), defs.RowSeparator) {
+	for _, elem := range strings.Split(string(bytes), RowSeparator) {
 		strs = append(strs, elem)
 	}
 	return strs
