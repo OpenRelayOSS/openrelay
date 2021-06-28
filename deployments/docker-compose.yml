@@ -16,4 +16,4 @@ openrelay:
     - "7005:7005"
     - "7006:7006"
     - "8000:8000"
-  entrypoint: "/usr/local/openrelay/bin/openrelay-boot.sh -listen_ipv4 192.168.1.31 -log 4 -repmode false"
+  entrypoint: "/usr/local/openrelay/bin/openrelay-boot.sh -listen_ipv4 192.168.1.31 -log 4 -repmode true "

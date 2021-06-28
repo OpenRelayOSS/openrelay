@@ -33,6 +33,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"encoding/base64"
 )
 
 type replay struct {
@@ -167,61 +168,44 @@ func rewriteFrame(record []byte, uid defs.PlayerId) ([]byte, error) {
 	}
 	header.SrcUid = uid
 	writeBuf := new(bytes.Buffer)
-	err = binary.Write(writeBuf, binary.LittleEndian, header)
-	if err != nil {
-		return nil, err
-	}
 	switch header.RelayCode {
 	case defs.RELAY, defs.RELAY_STREAM, defs.UNITY_CDK_RELAY, defs.UE4_CDK_RELAY:
+		PrintHeader(header)
+		err = binary.Write(writeBuf, binary.LittleEndian, header)
+		if err != nil {
+			return nil, err
+		}
 		err = binary.Write(writeBuf, binary.LittleEndian, record[defs.HeaderBytesLen:])
 		if err != nil {
 			return nil, err
 		}
 
 	case defs.SET_LEGACY_MAP:
-
-		var keysLen uint16
-		err = binary.Read(readBuf, binary.LittleEndian, &keysLen)
+		header.SrcUid = uid
+		colorKey := base64.StdEncoding.EncodeToString([]byte("\"" + strconv.Itoa(int(uid)) + "_Color\""))
+		nameKey := base64.StdEncoding.EncodeToString([]byte("\"" + strconv.Itoa(int(uid)) + "_NickName\""))
+		colorValue := base64.StdEncoding.EncodeToString([]byte("\"3\"")) // 1 ... 5 random
+		nameValue := base64.StdEncoding.EncodeToString([]byte("\"sample\"")) // flavor name random
+		keysBytes := []byte(nameKey + defs.RowSeparator + colorKey)
+		propsBytes := []byte(nameKey + defs.ColSeparator + nameValue + defs.RowSeparator + colorKey + defs.ColSeparator + colorValue)
+		keysLen := uint16(len(keysBytes))
+		alignmentLen := keysLen % 4
+		propsLen := uint16(len(propsBytes))
+		log.Println("keys len", keysLen)
+		log.Println("alignment len", alignmentLen)
+		log.Println("props len ", propsLen)
+		log.Println("keys ", string(keysBytes))
+		log.Println("props ", string(propsBytes))
+		header.ContentLen = 2 + 2 + keysLen + alignmentLen + propsLen
+		log.Println("header content len ", header.ContentLen)
+		log.Println("origin ", hex.EncodeToString(record))
+		log.Println("origin body", hex.EncodeToString(record[defs.HeaderBytesLen:]))
+		PrintHeader(header)
+		err = binary.Write(writeBuf, binary.LittleEndian, header)
 		if err != nil {
 			return nil, err
 		}
-		var propsLen uint16
-		err = binary.Read(readBuf, binary.LittleEndian, &propsLen)
-		if err != nil {
-			return nil, err
-		}
-		keysBytes := make([]byte, keysLen)
-		err = binary.Read(readBuf, binary.LittleEndian, &keysBytes)
-		if err != nil {
-			return nil, err
-		}
-		//read adjust alignment at keysLen
-		var alignmentLen = keysLen % 4
-		if alignmentLen != 0 {
-			var alignment = make([]byte, alignmentLen)
-			err = binary.Read(readBuf, binary.LittleEndian, &alignment)
-			if err != nil {
-				return nil, err
-			}
-		}
-		propsBytes := make([]byte, propsLen)
-		err = binary.Read(readBuf, binary.LittleEndian, &propsBytes)
-		if err != nil {
-			return nil, err
-		}
-		// parse is color ?
-		// parse is name ?
-
-		//msg, err := hex.DecodeString(line[3])
-		//hex.EncodeToString(frame)
-		colorKey := strconv.Itoa(int(uid)) + "_Color"
-		nameKey := strconv.Itoa(int(uid)) + "_NickName"
-		colorValue := "1"
-		nameValue := "1"
-		keysBytes = []byte(colorKey + defs.RowSeparator + nameKey)
-		keysLen = uint16(len(keysBytes))
-		propsBytes = []byte(colorValue + defs.RowSeparator + nameValue)
-		propsLen = uint16(len(propsBytes))
+		//err = binary.Write(writeBuf, binary.LittleEndian, record[defs.HeaderBytesLen:])
 		err = binary.Write(writeBuf, binary.LittleEndian, keysLen)
 		if err != nil {
 			return nil, err
@@ -230,20 +214,21 @@ func rewriteFrame(record []byte, uid defs.PlayerId) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		err = binary.Write(writeBuf, binary.LittleEndian, keysBytes)
 		if err != nil {
 			return nil, err
 		}
+
 		//write adjust alignment at keysLen.
-		alignmentLen = keysLen % 4
 		if alignmentLen != 0 {
-			alignment := make([]byte, alignmentLen)
+			var alignment = make([]byte, alignmentLen)
 			err = binary.Write(writeBuf, binary.LittleEndian, alignment)
 			if err != nil {
 				return nil, err
 			}
 		}
-		propsBytes = make([]byte, propsLen)
+
 		err = binary.Write(writeBuf, binary.LittleEndian, propsBytes)
 		if err != nil {
 			return nil, err
@@ -287,15 +272,7 @@ func Send(cli *client) {
 	if header.Ver != defs.FrameVersion {
 	}
 
-	log.Printf("header.Ver: '%d' ", header.Ver)
-	log.Printf("header.RelayCode: '%d' ", header.RelayCode)
-	log.Printf("header.ContentCode: '%d' ", header.ContentCode)
-	log.Printf("header.DestCode: '%d' ", header.DestCode)
-	log.Printf("header.Mask: '%d' ", header.Mask)
-	log.Printf("header.SrcUid: '%d' ", header.SrcUid)
-	log.Printf("header.SrcOid: '%d' ", header.SrcOid)
-	log.Printf("header.DestLen: '%d' ", header.DestLen)
-	log.Printf("header.ContentLen: '%d' ", header.ContentLen)
+	PrintHeader(header)
 
 	cli.Deal.SendFrame(joinFrame, goczmq.FlagNone)
 	time.Sleep(time.Duration(3) * time.Second)
@@ -331,6 +308,18 @@ func Send(cli *client) {
 			cli.PosA++
 		}
 	}
+}
+
+func PrintHeader(header defs.Header) {
+	log.Printf("header.Ver: '%d' ", header.Ver)
+	log.Printf("header.RelayCode: '%d' ", header.RelayCode)
+	log.Printf("header.ContentCode: '%d' ", header.ContentCode)
+	log.Printf("header.DestCode: '%d' ", header.DestCode)
+	log.Printf("header.Mask: '%d' ", header.Mask)
+	log.Printf("header.SrcUid: '%d' ", header.SrcUid)
+	log.Printf("header.SrcOid: '%d' ", header.SrcOid)
+	log.Printf("header.DestLen: '%d' ", header.DestLen)
+	log.Printf("header.ContentLen: '%d' ", header.ContentLen)
 }
 
 func Recv(cli *client) {

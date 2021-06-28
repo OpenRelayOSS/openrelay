@@ -444,7 +444,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 				continue
 			}
-			relay.Log.Printf(defs.VVERBOSE, "received join keysLen: '%d' ", keysLen)
+			relay.Log.Printf(defs.VVERBOSE, "received keysLen: '%d' ", keysLen)
 
 			var propsLen uint16
 			err = binary.Read(readBuf, binary.LittleEndian, &propsLen)
@@ -452,7 +452,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 				continue
 			}
-			relay.Log.Printf(defs.VVERBOSE, "received join propsLen: '%d' ", propsLen)
+			relay.Log.Printf(defs.VVERBOSE, "received propsLen: '%d' ", propsLen)
 
 			keysBytes := make([]byte, keysLen)
 			err = binary.Read(readBuf, binary.LittleEndian, &keysBytes)
@@ -478,18 +478,20 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
 				continue
 			}
-			beforeProperties := relay.Props[defs.PropKeyLegacy]
-			var newProperties []byte
-			if beforeProperties == nil || len(beforeProperties) == 0 {
-				newProperties = make([]byte, int(propsLen))
-				newProperties = append(newProperties, properties...)
+			beforeProps := relay.Props[defs.PropKeyLegacy]
+			var newProps []byte
+			if beforeProps == nil {
+				newProps = properties
+				relay.Log.Println(defs.VVERBOSE, "set legacy map update before none")
+				relay.Log.Println(defs.VVERBOSE, "set legacy map update total ", string(newProps))
 			} else {
-				newProperties = make([]byte, len(beforeProperties)+len(defs.RowSeparator)+int(propsLen))
-				newProperties = append(newProperties, beforeProperties...)
-				beforeProperties = append(beforeProperties, []byte(defs.RowSeparator)...)
-				newProperties = append(newProperties, properties...)
+				newProps = append(newProps, beforeProps...)
+				newProps = append(newProps, []byte(defs.RowSeparator)...)
+				newProps = append(newProps, properties...)
+				relay.Log.Println(defs.VVERBOSE, "set legacy map update before ", string(beforeProps))
+				relay.Log.Println(defs.VVERBOSE, "set legacy map update total ", string(newProps))
 			}
-			relay.Props[defs.PropKeyLegacy] = newProperties
+			relay.Props[defs.PropKeyLegacy] = newProps
 			writeBuf := new(bytes.Buffer)
 			err = binary.Write(writeBuf, binary.LittleEndian, header)
 			if err != nil {
@@ -535,7 +537,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
 				continue
 			}
-			relay.Log.Printf(defs.VVERBOSE, "set legacy map %s \n", relay.Props[defs.PropKeyLegacy])
+			relay.Log.Println(defs.VVERBOSE, "set legacy map relay ", string(properties))
 			if o.RecMode > 0 && o.RecMode == int(header.SrcUid) {
 				relay.Rec.Printf("%d\t%s\t%d\t%s", time.Now().UnixNano(), relay.ABLoop, header.RelayCode, hex.EncodeToString(request[1]))
 			}
@@ -565,7 +567,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
 				continue
 			}
-			relay.Log.Printf(defs.VVERBOSE, "get legacy map %s \n", relay.Props[defs.PropKeyLegacy])
+			relay.Log.Println(defs.VVERBOSE, "get legacy map relay ", string(properties))
 
 		case defs.GET_USERS:
 		case defs.SET_MASTER:
@@ -794,6 +796,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			relay.Guids[string(joinSeed)] = relay.LastUid
 			relay.Uids[relay.LastUid] = string(joinSeed)
 			writeBuf := new(bytes.Buffer)
+			header.RelayCode = defs.JOIN // TODO provisional fix
 			err = binary.Write(writeBuf, binary.LittleEndian, header)
 			if err != nil {
 				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
@@ -822,9 +825,9 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 				continue
 			}
 			relay.Log.Printf(defs.VVERBOSE, "-> relay '%s' ", hex.EncodeToString(request[1]))
-			if o.RecMode == int(relay.LastUid) {
-				relay.Rec.Printf("%d\t%s\t%d\t%s", time.Now().UnixNano(), relay.ABLoop, header.RelayCode, hex.EncodeToString(request[1]))
-			}
+		//	if o.RecMode == int(relay.LastUid) {
+		//		relay.Rec.Printf("%d\t%s\t%d\t%s", time.Now().UnixNano(), relay.ABLoop, header.RelayCode, hex.EncodeToString(request[1]))
+		//	}
 
 		case defs.PUSH_STACK:
 			relay.Log.Printf(defs.VERBOSE, "message code defs.PUSH_STACK ... %d\n", header.RelayCode)
