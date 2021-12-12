@@ -6,7 +6,11 @@
 
 ./scripts/build_all.sh
 
-sudo ./scripts/docker_compose.sh up
+sudo ./scripts/openrelay_quickstart.sh
+
+or
+
+sudo ./scripts/openrelay_localnet_quickstart.sh
 
 
 
