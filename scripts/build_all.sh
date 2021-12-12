@@ -21,6 +21,6 @@ ${REPO_ROOT_PATH}/scripts/build_extlib.sh || die "build extlib failed."
 
 ${REPO_ROOT_PATH}/scripts/build_img.sh || die "build image failed."
 
-${PODMAN_COMPOSE} ${REPO_ROOT_PATH}/deployments/docker-compose.yml build || die "docker-compose failed."
+${PODMAN_COMPOSE} -f ${REPO_ROOT_PATH}/deployments/docker-compose.yml build || die "docker-compose failed."
 
 cd -
