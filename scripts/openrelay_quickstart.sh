@@ -16,10 +16,8 @@
 
 source `dirname $0`/common.env
 
-[ "x$1" = "x" ] && die "need action parameter. build/up"
-
 cd ${REPO_ROOT_PATH}
 
-${PODMAN_COMPOSE} -f deployments/docker-compose.yml $*
+${PODMAN_COMPOSE} -f deployments/docker-compose.yml up
 
 cd ${RET_DIR}
