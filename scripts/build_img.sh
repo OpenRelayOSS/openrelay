@@ -73,6 +73,8 @@ cp ${REPO_ROOT_PATH}/configs/${IMAGE_NAME_MAIN}-boot.sh ${SOURCES_PATH}/${IMAGE_
 cp ${REPO_ROOT_PATH}/configs/${IMAGE_NAME_CLIENT}-boot.sh ${SOURCES_PATH}/${IMAGE_FULLNAME}/
 cp ${REPO_ROOT_PATH}/configs/${IMAGE_NAME_MAIN}.service ${SOURCES_PATH}/${IMAGE_FULLNAME}/
 cp ${REPO_ROOT_PATH}/configs/${IMAGE_NAME_MAIN}.env ${SOURCES_PATH}/${IMAGE_FULLNAME}/
+go build -o ${SOURCES_PATH}/${IMAGE_FULLNAME}/gipcheck ${REPO_ROOT_PATH}/configs/gipcheck.go
+go build -o ${SOURCES_PATH}/${IMAGE_FULLNAME}/lipcheck ${REPO_ROOT_PATH}/configs/lipcheck.go
 cp ${REPO_ROOT_PATH}/extlib/libczmq.so.*.*.* ${SOURCES_PATH}/${IMAGE_FULLNAME}/
 cp ${REPO_ROOT_PATH}/extlib/libsodium.so.*.*.* ${SOURCES_PATH}/${IMAGE_FULLNAME}/
 cp ${REPO_ROOT_PATH}/extlib/libzmq.so.*.*.* ${SOURCES_PATH}/${IMAGE_FULLNAME}/

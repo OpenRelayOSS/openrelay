@@ -60,12 +60,12 @@ do
             LISTEN_MODE=$2
             shift 1
             ;;
-        -listen_ipv4)
-            LISTEN_IPV4=$2
+        -endpoint_ipv4)
+            ENDPOINT_IPV4=$2
             shift 1
             ;;
-        -listen_ipv6)
-            LISTEN_IPV6=$2
+        -endpoint_ipv6)
+            ENDPOINT_IPV6=$2
             shift 1
             ;;
         -ehost)
@@ -101,7 +101,7 @@ do
             shift 1
             ;;
         -stf_shost)
-            STATEFULL_SUBSCRIBE_LISTENA_ADDR=$2
+            STATEFULL_SUBSCRIBE_LISTEN_ADDR=$2
             shift 1
             ;;
         -stf_sports)
@@ -126,6 +126,77 @@ do
     esac
 done
 
+#
+# Endpoint auto detect logics for local
+#
+if [ "x${LISTEN_MODE}" = "x0" ];then
+  if [ "x${ENDPOINT_IPV4}" = "x" ];then
+    RESULT=`${IMAGE_PATH}/lipcheck -4 -allowprivate`
+    ENDPOINT_IPV4=`echo -n ${RESULT} | awk '{print $3}' | head -1`
+    if [ "${ENDPOINT_IPV4}" != "x" ];then
+      echo -- Endpoint_ipv4 detected: ${ENDPOINT_IPV4}
+      echo -- Please set this Endpoint_ipv4 for /etc/sysconfig/openrelay.env
+    else
+      echo -- Endpoint_ipv4 detect failed, please check environment.
+      DETECT_ENDPOINT_IPV4_FAILED=1
+    fi
+  else
+      echo -- Fixed Endpoint_ipv4 ${ENDPOINT_IPV4} ok.
+  fi
+  if [ "x${ENDPOINT_IPV6}" = "x" ];then
+    RESULT=`${IMAGE_PATH}/lipcheck -6 -allowlinklocal`
+    ENDPOINT_IPV6=`echo -n ${RESULT} | awk '{print $3}' | head -1`
+    if [ "${ENDPOINT_IPV6}" != "x" ];then
+      echo -- Endpoint_ipv6 detected: ${ENDPOINT_IPV6}
+      echo -- Please set this Endpoint_ipv6 for /etc/sysconfig/openrelay.env
+    else
+      echo -- Endpoint_ipv6 detect failed, please check environment.
+      DETECT_ENDPOINT_IPV6_FAILED=1
+    fi
+  else
+      echo -- Endpoint_ipv6 fixed: ${ENDPOINT_IPV6} ok.
+  fi
+fi
+
+#
+# Endpoint auto detect logics for global
+#
+if [ "x${LISTEN_MODE}" = "x1" ];then
+  if [ "x${ENDPOINT_IPV4}" = "x" ];then
+    RESULT=`${IMAGE_PATH}/gipcheck -4 -url https://ifconfig.io/ip`
+    STATUS=`echo -n ${RESULT} | awk '{print $1}'`
+    if [ "x${STATUS}" = "x200" ];then
+      ENDPOINT_IPV4=`echo -n ${RESULT} | awk '{print $2}'`
+      echo -- Endpoint_ipv4 detected: ${ENDPOINT_IPV4}
+      echo -- Please set this Endpoint_ipv4 for /etc/sysconfig/openrelay.env
+    else
+      echo -- Endpoint_ipv4 detect failed, please check environment.
+      DETECT_ENDPOINT_IPV4_FAILED=1
+    fi
+  else
+      echo -- Endpoint_ipv4 fixed ${ENDPOINT_IPV4} ok.
+  fi
+  if [ "x${ENDPOINT_IPV6}" = "x" ];then
+    RESULT=`${IMAGE_PATH}/gipcheck -6 -url https://ifconfig.io/ip`
+    STATUS=`echo -n ${RESULT} | awk '{print $1}'`
+    if [ "x${STATUS}" = "x200" ];then
+      ENDPOINT_IPV6=`echo -n ${RESULT} | awk '{print $2}'`
+      echo -- Endpoint_ipv6 detected: ${ENDPOINT_IPV6}
+      echo -- Please set this Endpoint_ipv6 for /etc/sysconfig/openrelay.env
+    else
+      echo -- Endpoint_ipv6 detect failed, please check environment.
+      DETECT_ENDPOINT_IPV6_FAILED=1
+    fi
+  else
+      echo -- Endpoint_ipv6 fixed: ${ENDPOINT_IPV6} ok.
+  fi
+fi
+
+if [  "x${DETECT_ENDPOINT_IPV4_FAILED}" = "x1" -a "x${DETECT_ENDPOINT_IPV6_FAILED}" = "x1" ];then
+   echo -- ipv4/ipv6 both endpoint detect failed. cannot wakeup.
+   exit 1
+fi
+
 if [ "x${PERFORMANCE_MODE}" = "x0" ];then
 IMAGE_NAME=openrelay
 else
@@ -142,8 +213,8 @@ ${DRYRUN} ${IMAGE_PATH}/${IMAGE_NAME} \
 -hbtimeout=${HEATBEAT_TIMEOUT} \
 -jointimeout=${JOIN_TIMEOUT} \
 -listenmode=${LISTEN_MODE} \
--listen_ipv4=${LISTEN_IPV4} \
--listen_ipv6=${LISTEN_IPV6} \
+-endpoint_ipv4=${ENDPOINT_IPV4} \
+-endpoint_ipv6=${ENDPOINT_IPV6} \
 -ehost=${ENTRY_LISTEN_ADDR} \
 -eport=${ENTRY_PORT} \
 -ahost=${ADMIN_LISTEN_ADDR} \
@@ -152,7 +223,7 @@ ${DRYRUN} ${IMAGE_PATH}/${IMAGE_NAME} \
 -stf_dhost="${STATEFULL_DEAL_LISTEN_ADDR}" \
 -stf_dports=${STATEFULL_DEAL_PORTS} \
 -stf_sproto=${STATEFULL_SUBSCRIBE_PROTOCOL} \
--stf_shost="${STATEFULL_SUBSCRIBE_LISTENA_ADDR}" \
+-stf_shost="${STATEFULL_SUBSCRIBE_LISTEN_ADDR}" \
 -stf_sports=${STATEFULL_SUBSCRIBE_PORTS} \
 -usestl=${USE_STATELESS}
 

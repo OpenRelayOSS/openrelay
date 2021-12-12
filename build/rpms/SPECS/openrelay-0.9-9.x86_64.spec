@@ -33,6 +33,8 @@ install %{name} %{buildroot}/usr/local/%{name}/bin/
 install %{client_name} %{buildroot}/usr/local/%{name}/bin/
 install %{name}-boot.sh %{buildroot}/usr/local/%{name}/bin/
 install %{client_name}-boot.sh %{buildroot}/usr/local/%{name}/bin/
+install gipcheck %{buildroot}/usr/local/%{name}/bin/
+install lipcheck %{buildroot}/usr/local/%{name}/bin/
 install libsodium.so.* %{buildroot}/usr/local/%{name}/lib/
 install libzmq.so.* %{buildroot}/usr/local/%{name}/lib/
 install libczmq.so.* %{buildroot}/usr/local/%{name}/lib/
@@ -82,6 +84,8 @@ fi
 /usr/local/%{name}/bin/%{client_name}
 /usr/local/%{name}/bin/%{name}-boot.sh
 /usr/local/%{name}/bin/%{client_name}-boot.sh
+/usr/local/%{name}/bin/gipcheck
+/usr/local/%{name}/bin/lipcheck
 /var/log/%{name}
 %defattr(-, -, -, -)
 /usr/local/%{name}/lib/libsodium.so.23

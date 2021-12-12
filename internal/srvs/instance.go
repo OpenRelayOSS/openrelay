@@ -36,8 +36,8 @@ type OpenRelay struct {
 	StlSubPorts          string
 	AdminHost            string
 	AdminPort            string
-	ListenIpv4           string
-	ListenIpv6           string
+	EndpointIpv4         string
+	EndpointIpv6         string
 	ListenMode           int
 	LogLevel             defs.LogLevel
 	LogDir               string
@@ -64,7 +64,7 @@ func NewOpenRelay(eHost string, ePort string,
 	sldHost string, sldProto string, sldPorts string,
 	slsHost string, slsProto string, slsPorts string,
 	aHost string, aPort string,
-	listenIpv4 string, listenIpv6 string,
+	endpointIpv4 string, endpointIpv6 string,
 	listenMode int, logLevel int, logDir string,
 	recMode int, repMode bool,
 	heatbeatTimeout int, joinTimeout int) *OpenRelay {
@@ -85,8 +85,8 @@ func NewOpenRelay(eHost string, ePort string,
 		StlSubPorts:          slsPorts,
 		AdminHost:            aHost,
 		AdminPort:            aPort,
-		ListenIpv4:           listenIpv4,
-		ListenIpv6:           listenIpv6,
+		EndpointIpv4:         endpointIpv4,
+		EndpointIpv6:         endpointIpv6,
 		ListenMode:           listenMode,
 		LogLevel:             defs.LogLevel(logLevel),
 		LogDir:               logDir,

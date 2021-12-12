@@ -186,12 +186,14 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 		relay.Log.Panic("relay.Router create relay "+roomIdHexStr+" failed. "+o.StfDealProto+"://"+o.StfDealHost+":"+strconv.Itoa(int(room.StfDealPort)), err)
 	}
 	defer relay.Router.Destroy()
+	relay.Router.SetIpv6(1)
 
 	relay.Pub, err = goczmq.NewPub(o.StfSubProto + "://" + o.StfSubHost + ":" + strconv.Itoa(int(room.StfSubPort)))
 	if err != nil {
 		relay.Log.Panic("relay.Pub create relay "+roomIdHexStr+" failed. "+o.StfSubProto+"://"+o.StfSubHost+":"+strconv.Itoa(int(room.StfSubPort)), err)
 	}
 	defer relay.Pub.Destroy()
+	relay.Pub.SetIpv6(1)
 
 	relay.Log.Println(defs.VERBOSE, "start relay: ", roomIdHexStr)
 
