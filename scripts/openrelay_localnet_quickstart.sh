@@ -20,7 +20,7 @@ cd ${REPO_ROOT_PATH}
 
 export HOSTIPV4=`ip a | grep inet | grep -v inet6 | grep -v 127.0.0.1 | awk '{print $2}' | head -1 | awk -F'/' '{print $1}'`
 export HOSTIPV6=`ip a | grep inet6 | grep -v ::1 | awk '{print $2}' | head -1 | awk -F'/' '{print $1}'`
-export OPENRELAY_OPTION="-log 1 -listenmode 0 -endpoint_ipv4 ${HOSTIPV4} -endpoint_ipv6 ${HOSTIPV6}"
+export OPENRELAY_OPTION="${OPENRELAY_OPTION} -listenmode 0 -endpoint_ipv4 ${HOSTIPV4} -endpoint_ipv6 ${HOSTIPV6}"
 
 ${PODMAN_COMPOSE} -f deployments/docker-compose.yml up
 

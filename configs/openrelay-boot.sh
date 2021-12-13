@@ -141,7 +141,7 @@ if [ "x${LISTEN_MODE}" = "x0" ];then
       DETECT_ENDPOINT_IPV4_FAILED=1
     fi
   else
-      echo -- Fixed Endpoint_ipv4 ${ENDPOINT_IPV4} ok.
+      echo -- Endpoint_ipv4 fixed: ${ENDPOINT_IPV4} ok.
   fi
   if [ "x${ENDPOINT_IPV6}" = "x" ];then
     RESULT=`${IMAGE_PATH}/lipcheck -6 -allowlinklocal`
