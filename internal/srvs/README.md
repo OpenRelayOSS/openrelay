@@ -48,8 +48,8 @@ defs.UPDATE_DIST_MAP
   +-------- -------- --+
 ```
 Mode  
-0 ... Remove  
-1 ... Add or Set  
+-1 ... Remove  
+0  ... Add or Set  
   
 ## Pick Distributed Map
 12bytes over  
@@ -81,8 +81,8 @@ defs.PICK_DIST_MAP
   +-------- -------- --+
 ```
 Mode  
-0 ... Remove  
-1 ... Add or Set  
+-1 ... Remove  
+0  ... Add or Set  
 
 ## Notify Distributed Map Latest Revision
 1byte fixed  
