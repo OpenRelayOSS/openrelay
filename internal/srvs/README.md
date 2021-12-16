@@ -77,7 +77,7 @@ defs.PICK_DIST_MAP
   |                    |
   +-------- -------- --+
 ```
-## Notify DistributedMap Latest
+## Notify Distributed Map Latest Revision
 1byte fixed  
 defs.NOTIFY_DIST_MAP_LATEST
 ```
