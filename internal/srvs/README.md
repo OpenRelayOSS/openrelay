@@ -28,7 +28,7 @@ defs.UPDATE_DIST_MAP
   +---------------- ---------------- ---------------- ----------------+
   |                         Timestamp (uint32)                        |
   +---------------- ---------------- ---------------- ----------------+
-  |       Key Length (uint16)       |      Value Length (uint16)      |
+  |      Mode      |   Key Length   |      Value Length (uint16)      |
   +---------------- ---------------- ---------------- ----------------+
   |                  Key Bytes (free size byte array)                 |
   +---------------- ---------------- ---------------- ----------------+
@@ -47,6 +47,9 @@ defs.UPDATE_DIST_MAP
   |                    |
   +-------- -------- --+
 ```
+Mode 
+0 ... Remove
+1 ... Add or Set
   
 ## Pick Distributed Map
 12bytes over  
@@ -58,7 +61,7 @@ defs.PICK_DIST_MAP
   +---------------- ---------------- ---------------- ----------------+
   |                         Timestamp (uint32)                        |
   +---------------- ---------------- ---------------- ----------------+
-  |       Key Length (uint16)       |      Value Length (uint16)      |
+  |      Mode      |   Key Length   |      Value Length (uint16)      |
   +---------------- ---------------- ---------------- ----------------+
   |                  Key Bytes (free size byte array)                 |
   +---------------- ---------------- ---------------- ----------------+
@@ -77,6 +80,10 @@ defs.PICK_DIST_MAP
   |                    |
   +-------- -------- --+
 ```
+Mode 
+0 ... Remove
+1 ... Add or Set
+
 ## Notify Distributed Map Latest Revision
 1byte fixed  
 defs.NOTIFY_DIST_MAP_LATEST
