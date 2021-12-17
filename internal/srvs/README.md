@@ -60,9 +60,7 @@ defs.PICK_DIST_MAP
   |                         Revision (uint32)                         |
   +---------------- ---------------- ---------------- ----------------+
 ```
-Mode  
--1 ... Remove  
-0  ... Add or Set  
+  
 ## Pick Distributed Map (Relayed)
 12bytes over  
 defs.PICK_DIST_MAP
