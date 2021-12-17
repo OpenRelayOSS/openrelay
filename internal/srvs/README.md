@@ -51,7 +51,19 @@ Mode
 -1 ... Remove  
 0  ... Add or Set  
   
-## Pick Distributed Map
+## Pick Distributed Map (Request)
+12bytes over  
+defs.PICK_DIST_MAP
+```
+  0               8                16               24               32
+  +---------------- ---------------- ---------------- ----------------+
+  |                         Revision (uint32)                         |
+  +---------------- ---------------- ---------------- ----------------+
+```
+Mode  
+-1 ... Remove  
+0  ... Add or Set  
+## Pick Distributed Map (Relayed)
 12bytes over  
 defs.PICK_DIST_MAP
 ```
