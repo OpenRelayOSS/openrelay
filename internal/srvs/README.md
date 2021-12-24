@@ -94,7 +94,7 @@ Mode
 -1 ... Remove  
 0  ... Add or Set  
 
-## Notify Distributed Map Latest Revision
+## Notify User's Distributed Map Latest Revision
 4byte fixed  
 defs.NOTIFY_DIST_MAP_LATEST
 ```
