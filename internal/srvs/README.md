@@ -52,7 +52,7 @@ Mode
 0  ... Add or Set  
   
 ## Pick Distributed Map (Request)
-12bytes over  
+4byte fixed  
 defs.PICK_DIST_MAP
 ```
   0               8                16               24               32
@@ -61,7 +61,7 @@ defs.PICK_DIST_MAP
   +---------------- ---------------- ---------------- ----------------+
 ```
   
-## Pick Distributed Map (Relayed)
+## Pick Distributed Map (Relay)
 12bytes over  
 defs.PICK_DIST_MAP
 ```
@@ -95,7 +95,7 @@ Mode
 0  ... Add or Set  
 
 ## Notify Distributed Map Latest Revision
-1byte fixed  
+4byte fixed  
 defs.NOTIFY_DIST_MAP_LATEST
 ```
   0               8                16               24               32
