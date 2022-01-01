@@ -1,7 +1,7 @@
 # Entry Payload Format
 * 4byte alignment 
 
-## GetRoomDistMap
+## Get Merged Distributed Map
 /room/distmap/
 
 ```
