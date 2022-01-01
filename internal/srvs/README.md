@@ -2,7 +2,7 @@
 * 4byte alignment 
 
 ## Get Merged Distributed Map
-/room/distmap/
+/room/distmap/:room_name
 
 ```
 
