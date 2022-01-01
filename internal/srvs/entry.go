@@ -37,6 +37,7 @@ func (o *OpenRelay) EntryServ() {
 	http.HandleFunc("/room/join_prepare_polling/", o.JoinPreparePolling)
 	http.HandleFunc("/room/join_prepare_complete/", o.JoinPrepareComplete)
 	http.HandleFunc("/room/prop/", o.RoomProp)
+	http.HandleFunc("/room/distmap/", o.RoomDistMap)
 	http.HandleFunc("/logoff", logoff)
 	s := &http.Server{
 		Addr:              o.EntryHost + ":" + o.EntryPort,
@@ -529,6 +530,7 @@ func (o *OpenRelay) JoinPrepareResponse(relay *defs.RoomInstance, joinSeed []byt
 	assginUid := relay.LastUid
 	relay.Guids[string(joinSeed)] = relay.LastUid
 	relay.Uids[relay.LastUid] = string(joinSeed)
+	relay.UserMergedRevisions[relay.LastUid] = relay.MergedRevision
 	joinedUidsLen := uint16(len(joinedUids))
 	joinedNamesLen := uint16(len(relay.Names))
 	alignmentLen := uint16(0)
@@ -645,6 +647,191 @@ func (o *OpenRelay) RoomProp(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(writeBuf.Bytes())
 	log.Println(defs.VERBOSE, defs.CALLOUT, "RoomProp")
+}
+
+func (o *OpenRelay) RoomDistMap(w http.ResponseWriter, r *http.Request) {
+	validateGet(w, r)
+	log.Println(defs.VERBOSE, defs.CALLIN, "RoomDistMap")
+	requestName := strings.Replace(r.URL.Path, "/room/distmap/", "", 1)
+	var err error
+	roomId, _ := o.ReserveRooms[requestName]
+	roomIdHexStr := defs.GuidFormatString(roomId)
+	relay, _ := o.RelayQueue[roomIdHexStr]
+
+	elementsCount := uint16(len(relay.MergedMap))
+	elementsCountAlignment := make([]byte, 2) // uint16 alignment
+	mergedRevision := relay.MergedRevision
+	latestRevision := relay.LatestRevision
+	keysLength := make([]byte, elementsCount)
+	keysLengthAlignment := make([]byte, (elementsCount*1)%4) // 1 -> byte
+	valuesLength := make([]uint16, elementsCount)
+	valuesLengthAlignment := make([]byte, (elementsCount*2)%4) // 2 -> uint16
+	keysBytes := make([][]byte, elementsCount)
+	keysBytesAlignments := make([][]byte, elementsCount)
+	valuesBytes := make([][]byte, elementsCount)
+	valuesBytesAlignments := make([][]byte, elementsCount)
+	keysLengthContentLen := len(keysLength) + len(keysLengthAlignment)
+	valuesLengthContentLen := len(valuesLength) + len(valuesLengthAlignment)
+	keysContentLen := 0
+	valuesContentLen := 0
+	for key, value := range relay.MergedMap {
+		keysLength = append(keysLength, byte(len([]byte(key))))
+		valuesLength = append(valuesLength, uint16(len(value)))
+		keysBytes = append(keysBytes, []byte(key))
+		keysBytesAlignment := make([]byte, int(len([]byte(key))%4))
+		keysBytesAlignments = append(keysBytesAlignments, keysBytesAlignment)
+		valuesBytes = append(valuesBytes, value)
+		valuesBytesAlignment := make([]byte, len(value)%4)
+		valuesBytesAlignments = append(valuesBytesAlignments, valuesBytesAlignment)
+		keysContentLen += len(keysBytes) + len(keysBytesAlignment)
+		valuesContentLen += len(valuesBytes) + len(valuesBytesAlignment)
+	}
+
+	contentLen := uint16(keysLengthContentLen + valuesLengthContentLen + keysContentLen + valuesContentLen)
+
+	writeBuf := new(bytes.Buffer)
+	writeBuf, err = o.addResponseBytes(writeBuf, defs.OPENRELAY_RESPONSE_CODE_OK)
+	if err != nil {
+		log.Error("binary write failed. ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+		log.Println(defs.VERBOSE, defs.CALLOUT, "RoomDistMap")
+		return
+	}
+
+	err = binary.Write(writeBuf, binary.LittleEndian, contentLen)
+	if err != nil {
+		log.Error("binary write failed. ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+		log.Println(defs.VERBOSE, defs.CALLOUT, "RoomDistMap")
+		return
+	}
+
+	err = binary.Write(writeBuf, binary.LittleEndian, elementsCount)
+	if err != nil {
+		log.Error("binary write failed. ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+		log.Println(defs.VERBOSE, defs.CALLOUT, "RoomDistMap")
+		return
+	}
+
+	err = binary.Write(writeBuf, binary.LittleEndian, elementsCountAlignment)
+	if err != nil {
+		log.Error("binary write failed. ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+		log.Println(defs.VERBOSE, defs.CALLOUT, "RoomDistMap")
+		return
+	}
+
+	err = binary.Write(writeBuf, binary.LittleEndian, mergedRevision)
+	if err != nil {
+		log.Error("binary write failed. ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+		log.Println(defs.VERBOSE, defs.CALLOUT, "RoomDistMap")
+		return
+	}
+
+	err = binary.Write(writeBuf, binary.LittleEndian, latestRevision)
+	if err != nil {
+		log.Error("binary write failed. ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+		log.Println(defs.VERBOSE, defs.CALLOUT, "RoomDistMap")
+		return
+	}
+
+	for _, keyLen := range keysLength {
+		err = binary.Write(writeBuf, binary.LittleEndian, keyLen)
+		if err != nil {
+			log.Error("binary write failed. ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+			log.Println(defs.VERBOSE, defs.CALLOUT, "RoomDistMap")
+			return
+		}
+	}
+
+	if len(keysLengthAlignment) > 0 {
+		err = binary.Write(writeBuf, binary.LittleEndian, keysLengthAlignment)
+		if err != nil {
+			log.Error("binary write failed. ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+			log.Println(defs.VERBOSE, defs.CALLOUT, "RoomDistMap")
+			return
+		}
+	}
+
+	for _, valueLen := range valuesLength {
+		err = binary.Write(writeBuf, binary.LittleEndian, valueLen)
+		if err != nil {
+			log.Error("binary write failed. ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+			log.Println(defs.VERBOSE, defs.CALLOUT, "RoomDistMap")
+			return
+		}
+	}
+
+	if len(valuesLengthAlignment) > 0 {
+		err = binary.Write(writeBuf, binary.LittleEndian, valuesLengthAlignment)
+		if err != nil {
+			log.Error("binary write failed. ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+			log.Println(defs.VERBOSE, defs.CALLOUT, "RoomDistMap")
+			return
+		}
+	}
+
+	for index, keyBytes := range keysBytes {
+		err = binary.Write(writeBuf, binary.LittleEndian, []byte(keyBytes))
+		if err != nil {
+			log.Error("binary write failed. ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+			log.Println(defs.VERBOSE, defs.CALLOUT, "RoomDistMap")
+			return
+		}
+		if len(keysBytesAlignments[index]) > 0 {
+			err = binary.Write(writeBuf, binary.LittleEndian, keysBytesAlignments[index])
+			if err != nil {
+				log.Error("binary write failed. ", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+				log.Println(defs.VERBOSE, defs.CALLOUT, "RoomDistMap")
+				return
+			}
+		}
+	}
+	for index, valueBytes := range valuesBytes {
+		err = binary.Write(writeBuf, binary.LittleEndian, []byte(valueBytes))
+		if err != nil {
+			log.Error("binary write failed. ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+			log.Println(defs.VERBOSE, defs.CALLOUT, "RoomDistMap")
+			return
+		}
+		if len(valuesBytesAlignments[index]) > 0 {
+			err = binary.Write(writeBuf, binary.LittleEndian, valuesBytesAlignments[index])
+			if err != nil {
+				log.Error("binary write failed. ", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write(o.getResponseBytes(defs.OPENRELAY_RESPONSE_CODE_NG_RESPONSE_WRITE_FAILED))
+				log.Println(defs.VERBOSE, defs.CALLOUT, "RoomDistMap")
+				return
+			}
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(writeBuf.Bytes())
+	log.Println(defs.VERBOSE, defs.CALLOUT, "RoomDistMap")
 }
 
 func (o *OpenRelay) JoinPrepareComplete(w http.ResponseWriter, r *http.Request) {

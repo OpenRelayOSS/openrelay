@@ -100,6 +100,7 @@ const (
 )
 
 type RelayStatus uint8
+
 const (
 	LISTEN RelayStatus = iota
 	CLOSING
@@ -127,7 +128,19 @@ type Header struct {
 	ContentLen  uint16
 	_           [2]byte // 4byte
 }
+
 const HeaderBytesLen = 16
+
+type MapRevisionRaw struct {
+	Revision   uint32 // 4byte
+	Timestamp  int32  // 4byte
+	Mode       int8
+	KeyLen     byte
+	ValueLen   uint16 // 4byte
+	KeyBytes   []byte
+	Alignment  []byte
+	ValueBytes []byte
+}
 
 type RoomParameter struct {
 	Id            [16]byte
@@ -146,27 +159,32 @@ type RoomParameter struct {
 }
 
 type RoomInstance struct {
-	Guids         map[string]PlayerId
-	Uids          map[PlayerId]string
-	Names         map[PlayerId]string
-	Hbs           map[PlayerId]int64
-	Props         map[string][]byte
-	Router        *goczmq.Sock
-	Pub           *goczmq.Sock
-	LastUid       PlayerId
-	MasterUid     PlayerId
-	MasterUidNeed bool
-	Status        RelayStatus
-	Log           *Logger
-	Rec           *Recorder
-	ABLoop        ABLoop
+	Guids               map[string]PlayerId
+	Uids                map[PlayerId]string
+	Names               map[PlayerId]string
+	Hbs                 map[PlayerId]int64
+	Props               map[string][]byte
+	MapRevisions        map[uint32]MapRevisionRaw
+	UserMergedRevisions map[PlayerId]uint32
+	LatestRevision      uint32
+	MergedMap           map[string][]byte
+	MergedRevision      uint32
+	Router              *goczmq.Sock
+	Pub                 *goczmq.Sock
+	LastUid             PlayerId
+	MasterUid           PlayerId
+	MasterUidNeed       bool
+	Status              RelayStatus
+	Log                 *Logger
+	Rec                 *Recorder
+	ABLoop              ABLoop
 }
 
-func (r *RoomInstance) ToListen(){
+func (r *RoomInstance) ToListen() {
 	r.Status = LISTEN
 }
 
-func (r *RoomInstance) ToClose(){
+func (r *RoomInstance) ToClose() {
 	r.Status = CLOSING
 }
 
@@ -188,7 +206,7 @@ type RoomResponse struct {
 	FilterLen      byte      // 4byte
 	Name           [256]byte // 256byte
 	Filter         [256]byte // 256byte
-	ListenMode     byte      // 0 = localnetonly, 1 = ipv4+ipv6both, 2 = ipv6only, 3 = ipv4only
+	ListenMode     byte      // 0=localnet, 1=globalnet(ipv4+ipv6)
 	_              [3]byte   // 4byte alignment
 	ListenAddrIpv4 [4]byte
 	ListenAddrIpv6 [16]byte

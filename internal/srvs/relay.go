@@ -136,10 +136,15 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 	relay.Names = make(map[defs.PlayerId]string)
 	relay.Hbs = make(map[defs.PlayerId]int64)
 	relay.Props = make(map[string][]byte)
+	relay.MapRevisions = make(map[uint32]defs.MapRevisionRaw)
+	relay.UserMergedRevisions = make(map[defs.PlayerId]uint32)
+	relay.MergedMap = make(map[string][]byte)
 	relay.LastUid = 0
 	relay.MasterUid = 0
 	relay.MasterUidNeed = true
 	relay.ABLoop = defs.ALoop
+	relay.LatestRevision = 0
+	relay.MergedRevision = 0
 
 	roomIdHexStr := defs.GuidFormatString(room.Id)
 	joinPollingQueue := o.JoinAllPollingQueue[roomIdHexStr]
@@ -397,6 +402,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			delete(relay.Guids, string(joinSeed))
 			delete(relay.Uids, srcUid)
 			delete(relay.Names, srcUid)
+			delete(relay.UserMergedRevisions, srcUid)
 			delete(relay.Hbs, srcUid)
 
 			if len(relay.Guids) == 0 {
@@ -797,6 +803,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			}
 			relay.Guids[string(joinSeed)] = relay.LastUid
 			relay.Uids[relay.LastUid] = string(joinSeed)
+			relay.UserMergedRevisions[relay.LastUid] = relay.MergedRevision
 			writeBuf := new(bytes.Buffer)
 			header.RelayCode = defs.JOIN // TODO provisional fix
 			err = binary.Write(writeBuf, binary.LittleEndian, header)
@@ -836,6 +843,261 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 		case defs.FETCH_STACK:
 			relay.Log.Printf(defs.VERBOSE, "message code defs.FETCH_STACK ... %d\n", header.RelayCode)
 		case defs.CONNECT:
+		case defs.UPDATE_DIST_MAP:
+			if _, ok := relay.Hbs[header.SrcUid]; !ok {
+				relay.Log.Println(defs.NOTICE, "invalid srcUid: ", header.SrcUid)
+				continue
+			}
+			relay.Hbs[header.SrcUid] = time.Now().Unix()
+
+			distMap := defs.MapRevisionRaw{}
+			//var reqRevision uint32
+			err = binary.Read(readBuf, binary.LittleEndian, &distMap.Revision)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
+				continue
+			}
+			relay.Log.Printf(defs.VVERBOSE, "received Revision: '%d' ", distMap.Revision)
+
+			//var revTimestamp int32
+			err = binary.Read(readBuf, binary.LittleEndian, &distMap.Timestamp)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
+				continue
+			}
+			relay.Log.Printf(defs.VVERBOSE, "received Timestamp: '%d' ", distMap.Timestamp)
+
+			//var Mode int32
+			err = binary.Read(readBuf, binary.LittleEndian, &distMap.Mode)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
+				continue
+			}
+			relay.Log.Printf(defs.VVERBOSE, "received Mode: '%d' ", distMap.Mode)
+
+			//var keyLen uint16
+			err = binary.Read(readBuf, binary.LittleEndian, &distMap.KeyLen)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
+				continue
+			}
+			relay.Log.Printf(defs.VVERBOSE, "received keyLen: '%d' ", distMap.KeyLen)
+
+			//var valueLen uint16
+			err = binary.Read(readBuf, binary.LittleEndian, &distMap.ValueLen)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
+				continue
+			}
+			relay.Log.Printf(defs.VVERBOSE, "received valueLen: '%d' ", distMap.ValueLen)
+
+			distMap.KeyBytes = make([]byte, distMap.KeyLen)
+			err = binary.Read(readBuf, binary.LittleEndian, &distMap.KeyBytes)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
+				continue
+			}
+
+			//read adjust alignment at keyLen
+			var alignmentLen = distMap.KeyLen % 4
+			if alignmentLen != 0 {
+				distMap.Alignment = make([]byte, alignmentLen)
+				err = binary.Read(readBuf, binary.LittleEndian, &distMap.Alignment)
+				if err != nil {
+					relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
+					continue
+				}
+			}
+
+			distMap.ValueBytes = make([]byte, distMap.ValueLen)
+			err = binary.Read(readBuf, binary.LittleEndian, &distMap.ValueBytes)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
+				continue
+			}
+			relay.LatestRevision++
+			distMap.Revision = relay.LatestRevision
+			relay.MapRevisions[relay.LatestRevision] = distMap
+
+			writeBuf := new(bytes.Buffer)
+			err = binary.Write(writeBuf, binary.LittleEndian, header)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, distMap.Revision)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, distMap.Timestamp)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, distMap.Mode)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, distMap.KeyLen)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, distMap.ValueLen)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, distMap.KeyBytes)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, distMap.Alignment)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, distMap.ValueBytes)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+			err = relay.Pub.SendFrame(writeBuf.Bytes(), goczmq.FlagNone)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
+				continue
+			}
+			relay.Log.Println(defs.VVERBOSE, "update dist map relay ", string(distMap.ValueBytes))
+			if o.RecMode > 0 && o.RecMode == int(header.SrcUid) {
+				relay.Rec.Printf("%d\t%s\t%d\t%s", time.Now().UnixNano(), relay.ABLoop, header.RelayCode, hex.EncodeToString(request[1]))
+			}
+
+		case defs.PICK_DIST_MAP:
+			if _, ok := relay.Hbs[header.SrcUid]; !ok {
+				relay.Log.Println(defs.NOTICE, "invalid srcUid: ", header.SrcUid)
+				continue
+			}
+			relay.Hbs[header.SrcUid] = time.Now().Unix()
+
+			var reqRevision uint32
+			err = binary.Read(readBuf, binary.LittleEndian, &reqRevision)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
+				continue
+			}
+			relay.Log.Printf(defs.VVERBOSE, "received request Revision: '%d' ", reqRevision)
+
+			pickMap, exists := relay.MapRevisions[reqRevision]
+			if !exists {
+				relay.Log.Println(defs.NOTICE, "invalid revision requested revision:", reqRevision)
+				continue
+			}
+
+			writeBuf := new(bytes.Buffer)
+			err = binary.Write(writeBuf, binary.LittleEndian, header)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, pickMap.Revision)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, relay.LatestRevision)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, pickMap.Timestamp)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, pickMap.Mode)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, pickMap.KeyLen)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, pickMap.ValueLen)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, pickMap.KeyBytes)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, pickMap.Alignment)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+
+			err = binary.Write(writeBuf, binary.LittleEndian, pickMap.ValueBytes)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary write failed. ", err)
+				continue
+			}
+			err = relay.Pub.SendFrame(writeBuf.Bytes(), goczmq.FlagNone)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
+				continue
+			}
+			relay.Log.Println(defs.VVERBOSE, "pick dist map relay ", string(pickMap.ValueBytes))
+			if o.RecMode > 0 && o.RecMode == int(header.SrcUid) {
+				relay.Rec.Printf("%d\t%s\t%d\t%s", time.Now().UnixNano(), relay.ABLoop, header.RelayCode, hex.EncodeToString(request[1]))
+			}
+
+		case defs.NOTIFY_DIST_MAP_LATEST:
+			if _, ok := relay.Hbs[header.SrcUid]; !ok {
+				relay.Log.Println(defs.NOTICE, "invalid srcUid: ", header.SrcUid)
+				continue
+			}
+			relay.Hbs[header.SrcUid] = time.Now().Unix()
+
+			var notifRevision uint32
+			err = binary.Read(readBuf, binary.LittleEndian, &notifRevision)
+			if err != nil {
+				relay.Log.Println(defs.NOTICE, "binary read failed. ", err)
+				continue
+			}
+			relay.Log.Printf(defs.VVERBOSE, "received request Revision: '%d' ", notifRevision)
+
+			relay.UserMergedRevisions[header.SrcUid] = notifRevision
+
+			relay.Log.Println(defs.VVERBOSE, "notify map revision: ", notifRevision)
+			if o.RecMode > 0 && o.RecMode == int(header.SrcUid) {
+				relay.Rec.Printf("%d\t%s\t%d\t%s", time.Now().UnixNano(), relay.ABLoop, header.RelayCode, hex.EncodeToString(request[1]))
+			}
+
+			// receive only no sendframe.
+
 		default:
 			relay.Log.Printf(defs.NOTICE, "invalid message code ... %d\n", header.RelayCode)
 		}
@@ -929,10 +1191,14 @@ func (o *OpenRelay) Start(index int, stfDealPort, stfSubPort uint16) {
 	relay.Names = make(map[defs.PlayerId]string)
 	relay.Hbs = make(map[defs.PlayerId]int64)
 	relay.Props = make(map[string][]byte)
+	relay.UserMergedRevisions = make(map[defs.PlayerId]uint32)
+	relay.MergedMap = make(map[string][]byte)
 	relay.LastUid = 0
 	relay.MasterUid = 0
 	relay.MasterUidNeed = true
 	relay.ABLoop = defs.ALoop
+	relay.LatestRevision = 0
+	relay.MergedRevision = 0
 	relay.ToListen()
 
 	room.StfDealPort = stfDealPort
@@ -948,10 +1214,37 @@ func (o *OpenRelay) Start(index int, stfDealPort, stfSubPort uint16) {
 	relay.Log.Rotate()
 
 	go o.RelayServ(o.RoomQueue[roomIdHexStr], o.RelayQueue[roomIdHexStr])
+	go o.MergeRevisions(o.RelayQueue[roomIdHexStr], room.Id)
 	go o.Heatbeat(o.RelayQueue[roomIdHexStr], room.Id)
 
 	o.HotRoomQueue = append(o.HotRoomQueue, room.Id)
 	relay.Log.Printf(defs.INFO, "start room ok, new available room :%s", roomIdHexStr)
+}
+
+func (o *OpenRelay) MergeRevisions(relay *defs.RoomInstance, roomId [16]byte) {
+	roomIdHexStr := defs.GuidFormatString(roomId)
+	interval := time.Duration(50)
+	relay.Log.Println(defs.VERBOSE, "start merge revisions: ", roomIdHexStr)
+	for relay.Status == defs.LISTEN {
+		lowestRevision := uint32(0)
+		for _, revision := range relay.UserMergedRevisions {
+			if lowestRevision > revision || lowestRevision == 0 {
+				lowestRevision = revision
+			}
+		}
+		for lowestRevision > relay.MergedRevision {
+			raw := relay.MapRevisions[relay.MergedRevision+1]
+			if raw.Mode == -1 {
+				delete(relay.MergedMap, string(raw.KeyBytes))
+			} else {
+				relay.MergedMap[string(raw.KeyBytes)] = raw.ValueBytes
+			}
+			relay.MergedRevision++
+			delete(relay.MapRevisions, relay.MergedRevision)
+		}
+		time.Sleep(interval * time.Millisecond) // return context
+	}
+	relay.Log.Println(defs.VERBOSE, "exit merge revisions: ", roomIdHexStr)
 }
 
 func (o *OpenRelay) Heatbeat(relay *defs.RoomInstance, roomId [16]byte) {
@@ -968,6 +1261,7 @@ func (o *OpenRelay) Heatbeat(relay *defs.RoomInstance, roomId [16]byte) {
 				delete(relay.Guids, g)
 				delete(relay.Uids, k)
 				delete(relay.Names, k)
+				delete(relay.UserMergedRevisions, k)
 				delete(relay.Hbs, k)
 
 				if len(relay.Guids) > 0 && relay.MasterUid == k {
