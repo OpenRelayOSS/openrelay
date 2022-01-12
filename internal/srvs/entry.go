@@ -662,29 +662,38 @@ func (o *OpenRelay) RoomDistMap(w http.ResponseWriter, r *http.Request) {
 	elementsCountAlignment := make([]byte, 2) // uint16 alignment
 	mergedRevision := relay.MergedRevision
 	latestRevision := relay.LatestRevision
-	keysLength := make([]byte, elementsCount)
-	keysLengthAlignment := make([]byte, (elementsCount*1)%4) // 1 -> byte
-	valuesLength := make([]uint16, elementsCount)
-	valuesLengthAlignment := make([]byte, (elementsCount*2)%4) // 2 -> uint16
-	keysBytes := make([][]byte, elementsCount)
-	keysBytesAlignments := make([][]byte, elementsCount)
-	valuesBytes := make([][]byte, elementsCount)
-	valuesBytesAlignments := make([][]byte, elementsCount)
+	keysLength := make([]byte, 0)
+	keysLengthAlignment := make([]byte, 4 - (elementsCount*1)%4) // 1 -> byte
+	valuesLength := make([]uint16, 0)
+	valuesLengthAlignment := make([]byte, 4 - (elementsCount*2)%4) // 2 -> uint16
+	keysBytes := make([][]byte, 0)
+	keysBytesAlignments := make([][]byte, 0)
+	valuesBytes := make([][]byte, 0)
+	valuesBytesAlignments := make([][]byte, 0)
 	keysLengthContentLen := len(keysLength) + len(keysLengthAlignment)
 	valuesLengthContentLen := len(valuesLength) + len(valuesLengthAlignment)
+
+	log.Println(defs.VVERBOSE, "DistMap elementsCount: ", elementsCount)
+	log.Println(defs.VVERBOSE, "DistMap elementsCountAlignment: ", elementsCountAlignment)
+	log.Println(defs.VVERBOSE, "DistMap mergedRevision: ", mergedRevision)
+	log.Println(defs.VVERBOSE, "DistMap latestRevision: ", latestRevision)
+
 	keysContentLen := 0
 	valuesContentLen := 0
 	for key, value := range relay.MergedMap {
 		keysLength = append(keysLength, byte(len([]byte(key))))
 		valuesLength = append(valuesLength, uint16(len(value)))
 		keysBytes = append(keysBytes, []byte(key))
-		keysBytesAlignment := make([]byte, int(len([]byte(key))%4))
+		keysBytesAlignment := make([]byte, 4 - int(len([]byte(key))%4))
 		keysBytesAlignments = append(keysBytesAlignments, keysBytesAlignment)
 		valuesBytes = append(valuesBytes, value)
-		valuesBytesAlignment := make([]byte, len(value)%4)
+		valuesBytesAlignment := make([]byte, 4 - len(value)%4)
 		valuesBytesAlignments = append(valuesBytesAlignments, valuesBytesAlignment)
 		keysContentLen += len(keysBytes) + len(keysBytesAlignment)
 		valuesContentLen += len(valuesBytes) + len(valuesBytesAlignment)
+
+		log.Println(defs.VVERBOSE, "DistMap key: ", key, " length: ", len([]byte(key)), " alignment", keysBytesAlignment)
+		log.Println(defs.VVERBOSE, "DistMap value: ", string(value), " length: ", len(value), " alignment", valuesBytesAlignment)
 	}
 
 	contentLen := uint16(keysLengthContentLen + valuesLengthContentLen + keysContentLen + valuesContentLen)
@@ -744,7 +753,8 @@ func (o *OpenRelay) RoomDistMap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, keyLen := range keysLength {
+	for index, keyLen := range keysLength {
+		log.Println(defs.VVERBOSE, index, "keyLength: ", keyLen)
 		err = binary.Write(writeBuf, binary.LittleEndian, keyLen)
 		if err != nil {
 			log.Error("binary write failed. ", err)
@@ -756,6 +766,7 @@ func (o *OpenRelay) RoomDistMap(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(keysLengthAlignment) > 0 {
+		log.Println(defs.VVERBOSE, "keyLengthAlignment: ", len(keysLengthAlignment))
 		err = binary.Write(writeBuf, binary.LittleEndian, keysLengthAlignment)
 		if err != nil {
 			log.Error("binary write failed. ", err)
@@ -766,7 +777,8 @@ func (o *OpenRelay) RoomDistMap(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	for _, valueLen := range valuesLength {
+	for index, valueLen := range valuesLength {
+		log.Println(defs.VVERBOSE, index, "valueLength: ", valueLen)
 		err = binary.Write(writeBuf, binary.LittleEndian, valueLen)
 		if err != nil {
 			log.Error("binary write failed. ", err)
@@ -778,6 +790,7 @@ func (o *OpenRelay) RoomDistMap(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(valuesLengthAlignment) > 0 {
+		log.Println(defs.VVERBOSE, "valuesLengthAlignment: ", len(valuesLengthAlignment))
 		err = binary.Write(writeBuf, binary.LittleEndian, valuesLengthAlignment)
 		if err != nil {
 			log.Error("binary write failed. ", err)
@@ -789,7 +802,8 @@ func (o *OpenRelay) RoomDistMap(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for index, keyBytes := range keysBytes {
-		err = binary.Write(writeBuf, binary.LittleEndian, []byte(keyBytes))
+		log.Println(defs.VVERBOSE, index, "key: ", string(keyBytes))
+		err = binary.Write(writeBuf, binary.LittleEndian, keyBytes)
 		if err != nil {
 			log.Error("binary write failed. ", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -798,6 +812,7 @@ func (o *OpenRelay) RoomDistMap(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if len(keysBytesAlignments[index]) > 0 {
+			log.Println(defs.VVERBOSE, index, "key alignment: ", len(keysBytesAlignments[index]))
 			err = binary.Write(writeBuf, binary.LittleEndian, keysBytesAlignments[index])
 			if err != nil {
 				log.Error("binary write failed. ", err)
@@ -809,7 +824,8 @@ func (o *OpenRelay) RoomDistMap(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	for index, valueBytes := range valuesBytes {
-		err = binary.Write(writeBuf, binary.LittleEndian, []byte(valueBytes))
+		log.Println(defs.VVERBOSE, index, "value: ", string(valueBytes))
+		err = binary.Write(writeBuf, binary.LittleEndian, valueBytes)
 		if err != nil {
 			log.Error("binary write failed. ", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -818,6 +834,7 @@ func (o *OpenRelay) RoomDistMap(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if len(valuesBytesAlignments[index]) > 0 {
+			log.Println(defs.VVERBOSE, index, "value alignment: ", len(valuesBytesAlignments[index]))
 			err = binary.Write(writeBuf, binary.LittleEndian, valuesBytesAlignments[index])
 			if err != nil {
 				log.Error("binary write failed. ", err)

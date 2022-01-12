@@ -299,7 +299,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			relay.Log.Printf(defs.VVERBOSE, "received join seed: '%s' ", hex.EncodeToString(joinSeed))
 
 			//read adjust alignment at seedLen
-			alignmentLen = seedLen % 4
+			alignmentLen = 4 - seedLen % 4
 			if alignmentLen != 0 {
 				alignment = make([]byte, alignmentLen)
 				err = binary.Read(readBuf, binary.LittleEndian, &alignment)
@@ -354,7 +354,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 				continue
 			}
 			//write adjust alignment at seedLen.
-			alignmentLen = seedLen % 4
+			alignmentLen = 4 - seedLen % 4
 			if alignmentLen != 0 {
 				alignment = make([]byte, alignmentLen)
 				err = binary.Write(writeBuf, binary.LittleEndian, alignment)
@@ -470,7 +470,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			}
 
 			//read adjust alignment at keysLen
-			var alignmentLen = keysLen % 4
+			var alignmentLen = 4 - keysLen % 4
 			if alignmentLen != 0 {
 				var alignment = make([]byte, alignmentLen)
 				err = binary.Read(readBuf, binary.LittleEndian, &alignment)
@@ -525,7 +525,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			}
 
 			//write adjust alignment at keysLen.
-			alignmentLen = keysLen % 4
+			alignmentLen = 4 - keysLen % 4
 			if alignmentLen != 0 {
 				var alignment = make([]byte, alignmentLen)
 				err = binary.Write(writeBuf, binary.LittleEndian, alignment)
@@ -899,7 +899,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 			}
 
 			//read adjust alignment at keyLen
-			var alignmentLen = distMap.KeyLen % 4
+			var alignmentLen = 4 - distMap.KeyLen % 4
 			if alignmentLen != 0 {
 				distMap.Alignment = make([]byte, alignmentLen)
 				err = binary.Read(readBuf, binary.LittleEndian, &distMap.Alignment)
@@ -978,7 +978,7 @@ func (o *OpenRelay) RelayServ(room *defs.RoomParameter, relay *defs.RoomInstance
 				relay.Log.Println(defs.NOTICE, "frame send failed. ", err)
 				continue
 			}
-			relay.Log.Println(defs.VVERBOSE, "update dist map relay ", string(distMap.ValueBytes))
+			relay.Log.Println(defs.VVERBOSE, "update dist map relay ", string(distMap.KeyBytes), string(distMap.ValueBytes))
 			if o.RecMode > 0 && o.RecMode == int(header.SrcUid) {
 				relay.Rec.Printf("%d\t%s\t%d\t%s", time.Now().UnixNano(), relay.ABLoop, header.RelayCode, hex.EncodeToString(request[1]))
 			}
@@ -1227,16 +1227,20 @@ func (o *OpenRelay) MergeRevisions(relay *defs.RoomInstance, roomId [16]byte) {
 	relay.Log.Println(defs.VERBOSE, "start merge revisions: ", roomIdHexStr)
 	for relay.Status == defs.LISTEN {
 		lowestRevision := uint32(0)
-		for _, revision := range relay.UserMergedRevisions {
+		for uid, revision := range relay.UserMergedRevisions {
+			relay.Log.Println(defs.VERBOSE, "merge rev uid: ", uid, " revision: ", revision)
 			if lowestRevision > revision || lowestRevision == 0 {
 				lowestRevision = revision
 			}
 		}
+		relay.Log.Println(defs.VERBOSE, "merge rev user lowest revision: ", lowestRevision)
 		for lowestRevision > relay.MergedRevision {
 			raw := relay.MapRevisions[relay.MergedRevision+1]
 			if raw.Mode == -1 {
+				relay.Log.Println(defs.VERBOSE, "merge rev deleted", relay.MergedRevision, string(raw.KeyBytes))
 				delete(relay.MergedMap, string(raw.KeyBytes))
 			} else {
+				relay.Log.Println(defs.VERBOSE, "merge rev updated", relay.MergedRevision, string(raw.KeyBytes), string(raw.ValueBytes))
 				relay.MergedMap[string(raw.KeyBytes)] = raw.ValueBytes
 			}
 			relay.MergedRevision++
