@@ -1228,12 +1228,12 @@ func (o *OpenRelay) MergeRevisions(relay *defs.RoomInstance, roomId [16]byte) {
 	for relay.Status == defs.LISTEN {
 		lowestRevision := uint32(0)
 		for uid, revision := range relay.UserMergedRevisions {
-			relay.Log.Println(defs.VERBOSE, "merge rev uid: ", uid, " revision: ", revision)
+			relay.Log.Println(defs.VVERBOSE, "merge rev uid: ", uid, " revision: ", revision)
 			if lowestRevision > revision || lowestRevision == 0 {
 				lowestRevision = revision
 			}
 		}
-		relay.Log.Println(defs.VERBOSE, "merge rev user lowest revision: ", lowestRevision)
+		relay.Log.Println(defs.VVERBOSE, "merge rev user lowest revision: ", lowestRevision)
 		for lowestRevision > relay.MergedRevision {
 			raw := relay.MapRevisions[relay.MergedRevision+1]
 			if raw.Mode == -1 {
