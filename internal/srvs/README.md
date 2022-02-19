@@ -191,7 +191,7 @@ defs.NOTIFY_DIST_MAP_LATEST
   |                  User's Merged Revision (uint32)                  |
   +---------------- ---------------- ---------------- ----------------+
 ```
-## Historical Event Call
+## Call Historical Event
 12bytes over  
 defs.CALL_HIST_EVENT
 ```
@@ -215,7 +215,7 @@ defs.CALL_HIST_EVENT
   +-------- -------- --+
 ```
 
-## Historical Event Pick
+## Pick Historical Event
 16bytes over  
 defs.PICK_HIST_EVENT
 ```
