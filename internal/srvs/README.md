@@ -192,8 +192,8 @@ defs.NOTIFY_DIST_MAP_LATEST
   +---------------- ---------------- ---------------- ----------------+
 ```
 ## Historical Event Call
-4byte fixed  
-defs.NOTIFY_DIST_MAP_LATEST
+12bytes over  
+defs.CALL_HIST_EVENT
 ```
   0               8                16               24               32
   +---------------- ---------------- ---------------- ----------------+
@@ -216,6 +216,8 @@ defs.NOTIFY_DIST_MAP_LATEST
 ```
 
 ## Historical Event Pick
+16bytes over  
+defs.PICK_HIST_EVENT
 ```
   0               8                16               24               32
   +---------------- ---------------- ---------------- ----------------+
