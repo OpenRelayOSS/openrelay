@@ -7,7 +7,7 @@ jobs:
       - checkout
       - setup_remote_docker:
           version: 20.10.6
-      - run: dnf install -y sudo
+      - run: yum install -y sudo
       - run: ./scripts/setup_develop.sh
       - run: ./scripts/build_all.sh
       - store_artifacts:
