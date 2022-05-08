@@ -2,7 +2,7 @@ version: 2.1
 jobs:
   build-image:
     docker:
-      - image: docker.io/centos
+      - image: rockylinux:8.5
     steps:
       - checkout
       - setup_remote_docker:
